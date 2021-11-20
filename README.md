@@ -1,2 +1,2 @@
-# simple_vue_components
+# my_vue_components
 simple components for vue
