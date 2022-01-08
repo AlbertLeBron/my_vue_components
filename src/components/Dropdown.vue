@@ -1,7 +1,7 @@
 <template>
     <div class="dropdown-ui" ref="dropdown">
         <label @click="labelToggle">
-            <span v-if="labelText" @mouseenter="enterLT($event, labelText)" @mouseleave="leaveLT"><span class="dropdown-textWrap">{{labelText}}</span></span>
+            <span v-if="labelText"><span class="dropdown-textWrap" @mouseenter="enterLT($event, labelText)" @mouseleave="leaveLT">{{labelText}}</span></span>
             <i v-else class="placeholder">{{placeholder}}</i>
         </label>
         <div v-show="open" class="dropdown-container">
@@ -14,11 +14,12 @@
                 <ul v-else-if="list && list.length">
                     <li v-for="(item, index) in list"
                         :key="'it_'+index"
-                        :class="{selected: typeof value != 'undefined' && (typeof valKey != 'undefined' ? value === item[valKey] : value === item)}"
-                        @click="selectLi(item)"
-                        @mouseenter="enterLi($event, item)"
-                        @mouseleave="leaveLi">
-                        <span class="dropdown-textWrap">{{typeof nameKey != 'undefined' ? item[nameKey] : item}}</span>
+                        :class="{selected: !multiMode && typeof value != 'undefined' && (typeof valKey != 'undefined' ? value === item[valKey] : value === item)}"
+                        @click="selectLi(item)">
+                        <span v-if="multiMode" class="dropdown-multiBox">
+                            <input type="checkbox" :checked="checkedIndex(item)>-1" /><em></em>
+                        </span>
+                        <div class="dropdown-textDiv"><span class="dropdown-textWrap" @mouseenter="enterLi($event, item)" @mouseleave="leaveLi">{{typeof nameKey != 'undefined' ? item[nameKey] : item}}</span></div>
                     </li>
                 </ul>
                 <div v-else class="nodata">暂无数据</div>
@@ -40,7 +41,7 @@
     @Component
     export default class Dropdown extends Vue {
         @Prop() protected datas!: any;
-        @Prop() protected value!: any;
+        @Prop() protected value!: any | any[];
         @Prop() protected valKey!: string;
         @Prop() protected nameKey!: string;
         @Prop() protected defaultText!: string;
@@ -48,6 +49,8 @@
         @Prop() protected beforeClick!: Function;
         @Prop() protected afterClick!: Function;
         @Prop() protected showTitle!: 'all' | 'ellipsis' | undefined;
+        @Prop() protected multiMode?: boolean;
+        @Prop() protected multiNameMode?: 'count' | 'string';
         private open!: boolean;
         private list!: any[] | undefined;
         private tooltipList!: any[] | undefined;
@@ -81,13 +84,29 @@
         get labelText() {
             let text!: any;
             if (typeof this.value != 'undefined') {
-                let selectedItem!: any;
-                if (typeof this.valKey != 'undefined') {
-                    selectedItem = this.list ? this.list.find(p => p[this.valKey] === this.value) : undefined;
+                if (this.multiMode) {                   
+                    if (this.multiNameMode == 'string') {
+                        let checkedItems!: any[] | undefined;
+                        if (typeof this.valKey != 'undefined') {
+                            checkedItems = this.list ? this.list.filter(p => this.value.indexOf(p[this.valKey]) > -1) : undefined;
+                        } else {
+                            checkedItems = this.list ? this.list.filter(p => this.value.indexOf(p) > -1) : undefined;
+                        }
+                        if (checkedItems) text = (typeof this.nameKey != 'undefined' ? 
+                                                 checkedItems.map((p: any) => typeof p[this.nameKey] == 'object' ?  JSON.stringify(p[this.nameKey]) : p[this.nameKey]) : 
+                                                 checkedItems.map((p: any) => typeof p == 'object' ? JSON.stringify(p) : p)).join(', ');
+                    } else {
+                        if (this.value.length) text = `已选中 ${this.value.length} 项`;
+                    }
                 } else {
-                    selectedItem = this.list ? this.list.find(p => p === this.value) : undefined;
+                    let selectedItem!: any;
+                    if (typeof this.valKey != 'undefined') {
+                        selectedItem = this.list ? this.list.find(p => p[this.valKey] === this.value) : undefined;
+                    } else {
+                        selectedItem = this.list ? this.list.find(p => p === this.value) : undefined;
+                    }
+                    if (selectedItem) text = typeof this.nameKey != 'undefined' ? selectedItem[this.nameKey] : selectedItem;
                 }
-                if (selectedItem) text = typeof this.nameKey != 'undefined' ? selectedItem[this.nameKey] : selectedItem;
             }
             return typeof text != 'undefined' ? text : this.defaultText;
         }
@@ -115,40 +134,73 @@
             let beforeClick = typeof item.beforeClick == 'function' ? item.beforeClick : this.beforeClick;
             beforeClick && beforeClick(item);
 
-            if (typeof this.valKey != 'undefined') {
-                this.$emit('input', item[this.valKey]);
-            } else this.$emit('input', item);
-            this.open = false;
+            if (this.multiMode) {
+                this.clickMultiLi(item);
+            } else this.selectSingleLi(item);
 
             let afterClick = typeof item.afterClick == 'function' ? item.afterClick : this.afterClick;
             afterClick && afterClick(item);
         }
 
+        //Select an item, and update the value of the component.
+        public selectSingleLi(item: any) {           
+            if (typeof this.valKey != 'undefined') {
+                this.$emit('input', item[this.valKey]);
+            } else this.$emit('input', item);
+            this.open = false;            
+        }
+
+        //Click an item, and turn it to checked or unchecked.
+        public clickMultiLi(item: any) {
+            let checkedIndex: number = this.checkedIndex(item);
+            if (typeof this.value == 'undefined') {
+                let value: any[] = [];
+                this.$emit('input', value);
+            }
+            this.$nextTick(() => {
+                if (checkedIndex > -1) {
+                    this.value.splice(checkedIndex, 1);
+                } else {
+                    if (typeof this.valKey != 'undefined') {
+                        this.value.push(item[this.valKey]);
+                        this.value.sort((a: any, b: any) => (this.list as any[]).findIndex((p: any) => p[this.valKey] === a) - (this.list as any).findIndex((p: any) => p[this.valKey] === b));              
+                    } else {
+                        this.value.push(item);
+                        this.value.sort((a: any, b: any) => (this.list as any[]).indexOf(a) - (this.list as any).indexOf(b));
+                    }                    
+                }
+            });
+        }
+
+        public checkedIndex(item: any) {
+            return typeof this.value != 'undefined' ? typeof this.valKey != 'undefined' ? this.value.indexOf(item[this.valKey]) : this.value.indexOf(item) : -1;
+        }
+
         //Mouseenter text label
         public enterLT(event: MouseEvent, labelText: string) {
             if (this.showTitle == 'all' ||
-                (this.showTitle == 'ellipsis' && (event.target as HTMLElement).getBoundingClientRect().width == (event.target as HTMLElement).getElementsByClassName('dropdown-textWrap')[0].getBoundingClientRect().width))
+                (this.showTitle == 'ellipsis' && (event.target as HTMLElement).getBoundingClientRect().width == ((event.target as HTMLElement).parentNode as HTMLElement).getBoundingClientRect().width))
                 this.addTooltip(event, labelText);
         }
 
         //Mouseleave text label
         public leaveLT(event: MouseEvent) {
             if (this.showTitle == 'all' ||
-                (this.showTitle == 'ellipsis' && (event.target as HTMLElement).getBoundingClientRect().width == (event.target as HTMLElement).getElementsByClassName('dropdown-textWrap')[0].getBoundingClientRect().width))
+                (this.showTitle == 'ellipsis' && (event.target as HTMLElement).getBoundingClientRect().width == ((event.target as HTMLElement).parentNode as HTMLElement).getBoundingClientRect().width))
                 this.removeTooltip(event);
         }
 
         //Mouse enter li
-        public enterLi(event: MouseEvent, item: any) {
+        public enterLi(event: MouseEvent, item: any) {            
             if (this.showTitle == 'all' ||
-                (this.showTitle == 'ellipsis' && (event.target as HTMLElement).getBoundingClientRect().width == (event.target as HTMLElement).getElementsByClassName('dropdown-textWrap')[0].getBoundingClientRect().width))
+                (this.showTitle == 'ellipsis' && (event.target as HTMLElement).getBoundingClientRect().width == ((event.target as HTMLElement).parentNode as HTMLElement).getBoundingClientRect().width))
                 this.addTooltip(event, typeof this.nameKey != 'undefined' ? item[this.nameKey] : item);
         }
 
         //Mouse leave li
         public leaveLi(event: MouseEvent) {
             if (this.showTitle == 'all' ||
-                (this.showTitle == 'ellipsis' && (event.target as HTMLElement).getBoundingClientRect().width == (event.target as HTMLElement).getElementsByClassName('dropdown-textWrap')[0].getBoundingClientRect().width))
+                (this.showTitle == 'ellipsis' && (event.target as HTMLElement).getBoundingClientRect().width == ((event.target as HTMLElement).parentNode as HTMLElement).getBoundingClientRect().width))
                 this.removeTooltip(event);
         }
 
@@ -187,8 +239,6 @@
                     mh = dom.getBoundingClientRect().height,
                     x = xpos + mw + 10 > ww ? xpos - mw - 10 : xpos + 10,
                     y = ypos + mh + 10 > wh ? ypos - mh : ypos + 10;
-
-                console.log(mw);
 
                 Vue.set(item, 'pageX', x);
                 Vue.set(item, 'pageY', y);
@@ -260,13 +310,13 @@
         }
 
         .dropdown-ui > label > .placeholder,
-        .dropdown-ui > label .dropdown-textWrap {
+        .dropdown-ui .dropdown-textWrap {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
-        .dropdown-ui > label .dropdown-textWrap {
+        .dropdown-ui .dropdown-textWrap {
             display: inline-block;
             vertical-align: top;
             max-width: 100%;
@@ -281,18 +331,22 @@
             z-index: 1;
         }
 
-        .dropdown-wrap > .dropdown-wrap{
-            position: absolute;
+        .dropdown-ui .dropdown-wrap{
+            box-shadow: 0 2px 10px 0 rgba(0,0,0,.2);
+            border: 1px solid rgba(0, 0, 0, 0.2);
+            background: #fff;
         }
 
         .dropdown-ui ul, .loading, .nodata {
             margin: 0;
             padding: 5px 0;
-            list-style: none;
-            box-shadow: 0 2px 10px 0 rgba(0,0,0,.2);
-            border: 1px solid rgba(0, 0, 0, 0.2);
-            background: #fff;
+            list-style: none;            
             width: 100%;
+        }
+
+        .dropdown-ui ul{
+            max-height: 50vh;
+            overflow-y: auto;
         }
 
         .loading {
@@ -311,7 +365,8 @@
                 height: 30px;
                 line-height: 30px;
                 cursor: pointer;
-                position: relative;               
+                position: relative;
+                display: flex;
             }
 
                 .dropdown-ui ul > li.selected {
@@ -323,14 +378,63 @@
                     background: rgba(93,164,241,.2);
                 }
 
-                .dropdown-ui ul > li span {
+                .dropdown-ui ul > li .dropdown-multiBox{
+                    padding: 0 0 0 10px;
+                }
+
+                .dropdown-ui ul > li .dropdown-multiBox + .dropdown-textDiv .dropdown-textWrap{
+                    padding-left: 0;
+                }
+                
+                .dropdown-ui ul > li .dropdown-multiBox input[type=checkbox]{
+                    display: none;
+                }
+
+                .dropdown-ui ul > li .dropdown-multiBox input[type=checkbox] + em {
+                    position: relative;
+                }
+
+                .dropdown-ui ul > li .dropdown-multiBox input[type=checkbox] + em:before {
+                    content: '';
                     display: inline-block;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    max-width: 100%;
-                    vertical-align: top;
+                    vertical-align: middle;
+                    -webkit-transition: all 0.5s;
+                    transition: all 0.5s;
+                    width: 16px;
+                    height: 16px;
+                    outline: none;
+                    background-color: rgba(0, 0, 0, 0.2);
+                    margin-right: 5px;
+                    margin-top: -2px;
+                }
+
+                .dropdown-ui ul > li .dropdown-multiBox input[type=checkbox]:checked + em:before {
+                    background-color: #5da4f1;
+                }
+
+                .dropdown-ui ul > li .dropdown-multiBox input[type=checkbox]:checked + em:after {
+                    content: '';
+                    display: block;
+                    width: 5px;
+                    height: 9px;
+                    border: solid #ffffff;
+                    border-width: 0 2px 2px 0;
+                    -webkit-transform: rotate(45deg);
+                    transform: rotate(45deg);
+                    position: absolute;
+                    top: 4px;
+                    left: 5px;
+                }
+
+                .dropdown-ui ul > li .dropdown-textDiv{
+                    flex: 1;
+                    width: 0;
+                    min-width: 0;
+                }
+
+                .dropdown-ui ul > li .dropdown-textWrap {
                     padding: 0 10px;
+                    box-sizing: border-box;
                 }
 
     .loading-circle {

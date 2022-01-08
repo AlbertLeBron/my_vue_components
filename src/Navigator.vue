@@ -8,7 +8,7 @@
           <li>
             <p>组件库</p>
             <ul>
-              <li v-for="item in category" :key="item.path" @click="$emit('openstatechange', false)" :class="{active: item.path == $route.path}"><router-link :to="item.path" >{{item.title}}<span> - {{item.name}}</span></router-link></li>
+              <li v-for="item in category" :key="item.path" :disabled="item.disabled" @click="$emit('openstatechange', false)" :class="{active: item.path == $route.path}"><router-link :to="item.path" >{{item.title}}<span> - {{item.name}}</span></router-link></li>
             </ul>
           </li>
         </ul>
@@ -27,7 +27,7 @@ export default class Navigator extends Vue {
 
   data(){
     this.category = [{path: '/dropdown', title: '下拉框', name: 'Dropdown'},
-                     {path: '/combo', title: '可输入下拉框', name: 'Combo'},
+                     {path: '/combo', title: '弹出菜单', name: 'PopupMenu', disabled: true},
                      {path: '/range', title: '滑块', name: 'Range'},
                      {path: '/dotLine', title: '分段滑块', name: 'DotLine'},
                      {path: '/selectionbox', title: '选择框', name: 'SelectionBox'}];
@@ -80,8 +80,16 @@ export default class Navigator extends Vue {
 
   ul li {
     margin: 10px 0;
-    cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  ul li[disabled] {
+    pointer-events: none;
+  }
+
+  ul li[disabled] a {
+    text-decoration: none;
+    color: #ddd;
   }
 
   ul li p {
