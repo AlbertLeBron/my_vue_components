@@ -14,7 +14,7 @@
           </dl>
           <div class="resultWrap" title="当前值">
             <perfect-scrollbar ref="scrollbar">
-              <div v-html="JSON.stringify(workLine).replace(/{/g, '{<br>&nbsp;&nbsp;').replace(/}/g, '<br>}')"></div>
+              <div class="resultStyle" v-html="JSON.stringify(workLine).replace(/{/g, '{<br>&nbsp;&nbsp;').replace(/}/g, '<br>}')"></div>
             </perfect-scrollbar>
           </div>
         </section>

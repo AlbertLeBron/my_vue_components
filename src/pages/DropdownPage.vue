@@ -5,7 +5,7 @@
           <h3 class="nav_start">下拉框</h3>
           <h4 class="nav_about">Demo案例</h4>
           <div class="demoWrap">
-            <dropdown v-if="hack" v-model="mypet" :datas="list" :placeholder="placeholder" :showTitle="showTitle" :multiMode="multiMode" :multiNameMode="multiNameMode"></dropdown>
+            <dropdown v-if="hack" v-model="mypet" :datas="datas" :valKey="valKey" :nameKey="nameKey" :placeholder="placeholder" :showTitle="showTitle" :multiMode="multiMode" :multiNameMode="multiNameMode"></dropdown>
           </div>
           <dl class="setup">
             <div>
@@ -21,9 +21,38 @@
                 </span>
               </dd>
             </div>
-            <div><dt>悬停文字</dt><dd><input id="closeTooltip" type="radio" value="" v-model="tooltipSwitch" /><label for="closeTooltip">不显示</label></dd><dd><input id="all" type="radio" value="all" v-model="tooltipSwitch" /><label for="all">始终显示</label></dd>
-            <dd><input id="ellipsis" type="radio" value="ellipsis" v-model="tooltipSwitch" /><label for="ellipsis">截断显示</label></dd></div>
-
+            <div>
+              <dt>悬停文字</dt>
+              <dd><input id="closeTooltip" type="radio" value="" v-model="tooltipSwitch" /><label for="closeTooltip">不显示</label></dd><dd><input id="all" type="radio" value="all" v-model="tooltipSwitch" /><label for="all">始终显示</label></dd>
+              <dd><input id="ellipsis" type="radio" value="ellipsis" v-model="tooltipSwitch" /><label for="ellipsis">截断显示</label></dd>
+            </div>
+            <div>
+              <dt>加载方式</dt>
+              <dd><input id="synchronous" type="radio" value="false" v-model="loadSwitch" /><label for="synchronous">同步</label></dd>
+              <dd><input id="asynchronous" type="radio" value="true" v-model="loadSwitch" /><label for="asynchronous">异步</label></dd>
+            </div>
+            <div :class="['testCon', {show: testValType}]">
+              <dt>返回值类型 <button @click="testSwitch">{{testValType ? '关闭测试' : '开始测试' }}</button></dt>
+              <div v-if="testValType" class="testWrap">
+                <div class="dropdownGroup">
+                  <span><small>valKey值：</small><dropdown v-model="valKeySetting" :datas="valKeyList" :nameKey="'name'"></dropdown></span>
+                  <span><small>nameKey值：</small><dropdown v-model="nameKeySetting" :datas="nameKeyList" :nameKey="'name'"></dropdown></span>
+                </div>
+                <div class="resultWrapCon">
+                  <div class="resultWrap" title="初始列表">
+                    <perfect-scrollbar ref="scrollbarOL">
+                      <div class="resultStyle" v-html="typeof datasList != 'undefined' ? JSON.stringify(datasList).replace(/{/g, '{<br>&nbsp;&nbsp;').replace(/}/g, '<br>}'):`<i>${datasList}</i>`"></div>
+                    </perfect-scrollbar>                    
+                  </div>
+                  <big class="arrow"><span>&#10144;</span></big>
+                  <div class="resultWrap" title="当前值">
+                    <perfect-scrollbar ref="scrollbarRV">
+                      <div class="resultStyle" v-html="typeof mypet != 'undefined' ? JSON.stringify(mypet).replace(/{/g, '{<br>&nbsp;&nbsp;').replace(/}/g, '<br>}'):`<i>${mypet}</i>`"></div>
+                    </perfect-scrollbar>                    
+                  </div>
+                </div>
+              </div>
+            </div>
           </dl>
         </section>
       </div>
@@ -41,25 +70,38 @@ import Dropdown from '../components/Dropdown.vue';
 })
 export default class DropdownPage extends Vue {
   private mypet!: string | string[] | undefined;
-  private list!: any[];
+  private datas!: any[] | Function;
+  private datasList!: any[] | undefined;
   private placeholder!: string;
   private multiMode!: boolean;
   private showTitle!: 'all' | 'ellipsis' | undefined;
   private multiNameMode!: 'count' | 'string';
+  private asyncMode!: boolean;
+  private valKey!: string | undefined;
+  private nameKey!: string | undefined;
+  private testValType!: boolean;
   private hack!: boolean;
+  private valKeyList: any[] = [{name: '-- 无 --'}, {name: 'val', val: 'val'}];
+  private nameKeyList: any[] = [{name: '-- 无 --'}, {name: 'name', val: 'name'}];
+  private list!: any[];
 
   data(){
-    this.hack = true;
-    this.list = ['中华田园犬', '边牧', '德牧', '上古神兽 —— 蚩尤坐骑 —— 食铁兽 —— 易危国宝 —— 萌萌的 —— 大熊猫', '金毛', '泰迪', '阿拉斯加', '萨摩耶', '哈士奇', '柴犬',
-                 '柯基', '狸花猫', '大橘', '英短', '蓝猫', '金渐层', '龙猫', '小白兔', '小松鼠'];
+    this.hack = true;    
+    this.datas = this.datasList = this.list = ['中华田园犬', '边牧', '德牧', '上古神兽 —— 蚩尤坐骑 —— 食铁兽 —— 易危国宝 —— 萌萌的 —— 大熊猫', '金毛', '泰迪', '阿拉斯加', '萨摩耶', '哈士奇', '柴犬',
+                                               '柯基', '狸花猫', '大橘', '英短', '蓝猫', '金渐层', '龙猫', '小白兔', '小松鼠'];
     this.placeholder = '<请选择小动物>';
     return {
       mypet: this.mypet,
-      list: this.list,
+      datas: this.datas,
+      datasList: this.datasList,
       placeholder: this.placeholder,
       multiMode: this.multiMode,
       multiNameMode: this.multiNameMode,
       showTitle: this.showTitle,
+      asyncMode: this.asyncMode,
+      valKey: this.valKey,
+      nameKey: this.nameKey,
+      testValType: this.testValType,
       hack: this.hack
     }
   }
@@ -67,6 +109,41 @@ export default class DropdownPage extends Vue {
   beforeMount() {
     this.multiMode = false;
     this.multiNameMode = 'count';
+    this.asyncMode = false;
+  }
+
+  mounted() {
+    window.addEventListener('resize', this.updateResultScrollber);
+    this.$watch('testValType', () => {
+      this.$nextTick(() => {
+        this.$emit('updateMainBodyScrollbar');
+      });
+    });
+  }
+
+  beforeDestroy() {
+    window.removeEventListener('resize', this.updateResultScrollber);
+  }
+
+  public updateResultScrollber() {
+    if(this.$refs.scrollbarOL) (this.$refs.scrollbarOL as any).update();
+    if(this.$refs.scrollbarRV) (this.$refs.scrollbarRV as any).update();
+  }
+
+  public testSwitch() {
+    this.testValType = !this.testValType;
+    this.mypet = undefined;
+    if (this.testValType) {
+      this.list = [{val: 0, name: '中华田园犬'}, {val: 1, name: '边牧'}, {val: 2, name: 999}, {val: 3, name: true}, 
+                   {val: 4, name: {firstName: 'Grey', lastName: 'Little', nikeyName: 'spot'}},
+                   {val: 5, name: 'Big Yellow', animal: 'dog', type: '金毛巡回猎犬', age: 3, price: '1000'},
+                   {val: 6, name: [1, 2, 3, 4]}];
+    } else {
+      this.list = ['中华田园犬', '边牧', '德牧', '上古神兽 —— 蚩尤坐骑 —— 食铁兽 —— 易危国宝 —— 萌萌的 —— 大熊猫', '金毛', '泰迪', '阿拉斯加', '萨摩耶', '哈士奇', '柴犬',
+                    '柯基', '狸花猫', '大橘', '英短', '蓝猫', '金渐层', '龙猫', '小白兔', '小松鼠'];     
+    }
+    this.datas = this.datasList = this.list;
+    this.updateDotLineView();
   }
 
   get patternSwitch(){
@@ -97,6 +174,49 @@ export default class DropdownPage extends Vue {
     this.updateDotLineView();
   }
 
+  get loadSwitch(){
+    return JSON.stringify(this.asyncMode);
+  }
+
+  set loadSwitch(value: string){
+    this.mypet = undefined;
+    this.asyncMode = JSON.parse(value);
+    if (this.asyncMode) {
+      let t!: any;
+      this.datasList = undefined;
+      this.datas = (fn: Function) => {
+        clearTimeout(t);
+        t = setTimeout(() => {  
+          this.datasList = this.list;
+          fn(this.datasList);
+        }, 1000);
+      }
+    } else{
+      this.datas = this.datasList = this.list;
+    }
+    this.updateDotLineView();
+  }
+
+  get valKeySetting(){
+    return this.valKeyList.find((p: any) => p.val == this.valKey);
+  }
+
+  set valKeySetting(value: any){
+    this.mypet = undefined;
+    this.valKey = value.val;    
+    this.updateDotLineView();
+  }
+
+  get nameKeySetting(){
+    return this.nameKeyList.find((p: any) => p.val == this.nameKey);
+  }
+
+  set nameKeySetting(value: any){
+    this.mypet = undefined;
+    this.nameKey = value.val;    
+    this.updateDotLineView();
+  }
+  
   public updateDotLineView(){
     this.hack = false;
     this.$nextTick(() => {
@@ -126,15 +246,92 @@ export default class DropdownPage extends Vue {
     padding: 2px 0;
     border-radius: 2px;
   }
-  .multiNameSelection.show{
-    background: #f8ff89;
-    border: 1px solid green;
+  .multiNameSelection.show,
+  .testCon.show{
+    background: rgba(248, 255, 137, .4);
+    border: 1px solid rgba(0, 128, 0, .35);
     padding: 2px 6px;
+  }
+  .testCon.show{
+    padding: 10px 16px;
   }
   .nameModeText{
     padding-right: 5px;
   }
   .nameModeText + span{
     padding-right: 10px;
+  }
+  .testWrap{
+    padding-top: 10px;
+  }
+  .dropdownGroup{
+    border-top: 1px solid rgba(0, 128, 0, .35);
+    padding: 10px 0;
+  }
+  .dropdownGroup > span{
+    display: inline-block;
+  }
+  .dropdownGroup .dropdown-ui{
+    display: inline-block;
+    width: 90px;
+    vertical-align: top;
+    margin-right: 10px;
+  }
+  .dropdownGroup .dropdown-ui /deep/ > label{
+    background: #f2f2f2;
+  }
+  .dropdownGroup .dropdown-ui:hover /deep/ > label{
+    background: #e8e8e8;
+  }
+  .resultWrapCon{
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+  }
+  .resultWrapCon > .resultWrap{
+    flex: 1;
+    width: 0;
+    min-width: 0;
+    height: 320px;
+  }
+  .arrow{
+    padding: 0 10px;
+    font-size: 30px;
+  }
+  @media screen and (max-width: 730px){
+    .content dt, .content dd{
+      display: block!important;
+    }
+    .content dt{
+      margin-bottom: 5px;
+    }
+    .setup>div{
+      padding-bottom: 8px;
+    }
+    .dropdownGroup > span{
+      display: block;
+      padding-bottom: 5px;
+    }
+    .dropdownGroup small{
+      display: inline-block;
+      text-align: right;
+      width: 100px;
+    }
+    .resultWrapCon {
+      display: block;
+    }
+    .resultWrapCon > .resultWrap{
+      width: auto;
+      height: auto;
+    }
+    .arrow{
+      display: block;
+      text-align: center;
+    }
+    .arrow > span{
+      transform: rotate(90deg);
+      -webkit-transform: rotate(90deg);
+      display: inline-block;
+    }
   }
 </style>

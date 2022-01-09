@@ -71,12 +71,16 @@ export default class MainBody extends Vue {
     }
     .resultWrap{
       background: #eee;
-      padding: 30px 10px 10px;
+      padding: 30px 20px 5px;
       position: relative;
       border: 1px solid #ddd;
     }
     .resultWrap > div{
-      padding: 10px;
+      padding: 10px 0;
+      box-sizing: border-box;
+      .resultStyle{
+        white-space: nowrap;
+      }
     }
     .resultWrap::before{
       content: attr(title);
