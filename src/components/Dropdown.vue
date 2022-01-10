@@ -424,6 +424,7 @@
                     position: absolute;
                     top: 4px;
                     left: 5px;
+                    box-sizing: border-box;
                 }
 
                 .dropdown-ui ul > li .dropdown-textDiv{
