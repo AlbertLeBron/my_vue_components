@@ -139,6 +139,8 @@ export default class DropdownPage extends Vue {
                    {val: 5, name: 'Big Yellow', animal: 'dog', type: '金毛巡回猎犬', age: 3, price: '1000'},
                    {val: 6, name: [1, 2, 3, 4]}];
     } else {
+      this.valKey = undefined;
+      this.nameKey = undefined;
       this.list = ['中华田园犬', '边牧', '德牧', '上古神兽 —— 蚩尤坐骑 —— 食铁兽 —— 易危国宝 —— 萌萌的 —— 大熊猫', '金毛', '泰迪', '阿拉斯加', '萨摩耶', '哈士奇', '柴犬',
                     '柯基', '狸花猫', '大橘', '英短', '蓝猫', '金渐层', '龙猫', '小白兔', '小松鼠'];     
     }
