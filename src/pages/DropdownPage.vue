@@ -84,6 +84,7 @@ export default class DropdownPage extends Vue {
   private valKeyList: any[] = [{name: '-- 无 --'}, {name: 'val', val: 'val'}];
   private nameKeyList: any[] = [{name: '-- 无 --'}, {name: 'name', val: 'name'}];
   private list!: any[];
+  private t!: any;
 
   data(){
     this.hack = true;    
@@ -144,7 +145,7 @@ export default class DropdownPage extends Vue {
       this.list = ['中华田园犬', '边牧', '德牧', '上古神兽 —— 蚩尤坐骑 —— 食铁兽 —— 易危国宝 —— 萌萌的 —— 大熊猫', '金毛', '泰迪', '阿拉斯加', '萨摩耶', '哈士奇', '柴犬',
                     '柯基', '狸花猫', '大橘', '英短', '蓝猫', '金渐层', '龙猫', '小白兔', '小松鼠'];     
     }
-    this.datas = this.datasList = this.list;
+    this.updateDatas();
     this.updateDotLineView();
   }
 
@@ -183,19 +184,7 @@ export default class DropdownPage extends Vue {
   set loadSwitch(value: string){
     this.mypet = undefined;
     this.asyncMode = JSON.parse(value);
-    if (this.asyncMode) {
-      let t!: any;
-      this.datasList = undefined;
-      this.datas = (fn: Function) => {
-        clearTimeout(t);
-        t = setTimeout(() => {  
-          this.datasList = this.list;
-          fn(this.datasList);
-        }, 1000);
-      }
-    } else{
-      this.datas = this.datasList = this.list;
-    }
+    this.updateDatas();
     this.updateDotLineView();
   }
 
@@ -217,6 +206,21 @@ export default class DropdownPage extends Vue {
     this.mypet = undefined;
     this.nameKey = value.val;    
     this.updateDotLineView();
+  }
+  
+  public updateDatas(){
+    if (this.t) clearTimeout(this.t);
+    if (this.asyncMode) {      
+      this.datasList = undefined;
+      this.datas = (fn: Function) => {
+        this.t = setTimeout(() => {  
+          this.datasList = this.list;
+          fn(this.datasList);
+        }, 1000);
+      }
+    } else{
+      this.datas = this.datasList = this.list;
+    }
   }
   
   public updateDotLineView(){
