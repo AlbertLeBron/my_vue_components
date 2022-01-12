@@ -1,7 +1,11 @@
 <template>
     <div class="dropdown-ui" ref="dropdown">
-        <label @click="labelToggle">
-            <span v-if="labelText"><span class="dropdown-textWrap" @mouseenter="enterLT($event, labelText)" @mouseleave="leaveLT">{{labelText}}</span></span>
+        <div v-if="filterMode" class="dropdown-filterWrap">
+            <input type="text" v-model="filterValue" :placeholder="filterPlaceholder" @focus="filterFocus" />
+            <span v-show="filterKey || labelText" @click="clearValue"></span>
+        </div>        
+        <label v-else @click="labelToggle">
+            <span v-if="typeof labelText != 'undefined'"><span class="dropdown-textWrap" @mouseenter="enterLT($event, labelText)" @mouseleave="leaveLT">{{labelText}}</span></span>
             <i v-else class="placeholder">{{placeholder}}</i>
         </label>
         <div v-show="open" class="dropdown-container">
@@ -11,8 +15,8 @@
                         <div v-for="(item, index) in Array(9).fill(0)" :key="'sp_'+(item+index)"></div>
                     </div>
                 </div>
-                <ul v-else-if="list && list.length">
-                    <li v-for="(item, index) in list"
+                <ul v-else-if="shownList && shownList.length">
+                    <li v-for="(item, index) in shownList"
                         :key="'it_'+index"
                         :class="{selected: !multiMode && typeof value != 'undefined' && (typeof valKey != 'undefined' ? value === item[valKey] : value === item)}"
                         @click="selectLi(item)">
@@ -29,7 +33,7 @@
             <transition-group name="fade">
                 <template v-if="tooltipList">
                     <div v-for="item in tooltipList" :ref="item.id" :key="item.id" :class="['dropdown-tooltip']" :style="{left: (item.pageX | 0)+'px', top: (item.pageY | 0)+'px'}">{{item.text}}</div>
-                </template>                
+                </template>
             </transition-group>
         </div>
     </div>
@@ -51,18 +55,22 @@
         @Prop() protected showTitle!: 'all' | 'ellipsis' | undefined;
         @Prop() protected multiMode?: boolean;
         @Prop() protected multiNameMode?: 'count' | 'string';
+        @Prop() protected filterMode?: boolean;
+        @Prop() protected openFlexible?: boolean;
         private open!: boolean;
         private list!: any[] | undefined;
         private tooltipList!: any[] | undefined;
         private tooltipIdCounter: number = 0;
         private loading!: boolean;
+        private filterKey!: string | undefined;
 
         data() {
             return{
                 open: this.open,
                 list: this.list,
                 loading: this.loading,
-                tooltipList: this.tooltipList
+                tooltipList: this.tooltipList,
+                filterKey: this.filterKey
             }
         }
         
@@ -74,10 +82,76 @@
             this.$watch('datas', () => {
                 this.list = Array.isArray(this.datas) ? this.datas : undefined;
             });
+            this.$watch('open', (open: boolean) => {
+                if (!this.filterMode) return;
+                if (!open) {
+                    this.filterKey = undefined;
+                } else this.filterKey = '';
+            });
         }
 
         beforeDestroy() {
             document.removeEventListener('click', this.closeSelect, true);
+        }
+
+        get filterValue() {
+            return typeof this.filterKey != 'undefined' ? this.filterKey : this.labelText;
+        }
+
+        set filterValue(value: string) {
+            this.filterKey = value;
+        }
+
+        get filterPlaceholder() {
+            return typeof this.labelText != 'undefined' ? this.labelText : this.placeholder;
+        }
+
+        get shownList() {
+            return this.filterMode ? this.filterList : this.list;
+        }
+
+        get canAttachFlexible() {
+            return this.openFlexible && !this.multiMode && !(typeof this.valKey != 'undefined' && this.valKey !== this.nameKey);
+        }
+
+        get filterList() {
+            let emptyList: any[] = [];
+            if (typeof this.list != 'undefined') {
+                if (this.filterKey) {
+                    let isExist = false;
+                    if (this.nameKey) {
+                        this.list.forEach((item: any) => {
+                            let nameStr = typeof item[this.nameKey] == 'string' ? item[this.nameKey] : JSON.stringify(item[this.nameKey]);
+                            if (nameStr.toUpperCase().indexOf((this.filterKey as string).toUpperCase()) > -1) {
+                                emptyList.push(item);
+                            }
+                            if (nameStr == this.filterKey) isExist = true;
+                        });
+                        if (this.canAttachFlexible && !isExist) {
+                            let opt: any = {};
+                            opt[this.nameKey] = this.filterKey;
+                            emptyList.unshift(opt);
+                        }
+                    } else {
+                        this.list.forEach((item: any) => {
+                            let nameStr = typeof item == 'string' ? item : JSON.stringify(item);
+                            if (nameStr.toUpperCase().indexOf((this.filterKey as string).toUpperCase()) > -1) {
+                                emptyList.push(item);
+                            }
+                            if (nameStr == this.filterKey) isExist = true;
+                        });
+                        if (this.canAttachFlexible && !isExist) emptyList.unshift(this.filterKey);
+                    }
+                } else emptyList = this.list;
+            } else if (this.canAttachFlexible && this.filterKey) {
+                if (this.nameKey) {
+                    let opt: any = {};
+                    opt[this.nameKey] = this.filterKey;
+                    emptyList.unshift(opt);
+                } else emptyList.unshift(this.filterKey);
+            }
+
+            return emptyList;
         }
 
         //update text of the selected item.
@@ -93,8 +167,8 @@
                             checkedItems = this.list ? this.list.filter(p => this.value.indexOf(p) > -1) : undefined;
                         }
                         if (checkedItems) text = (typeof this.nameKey != 'undefined' ? 
-                                                 checkedItems.map((p: any) => typeof p[this.nameKey] == 'object' ?  JSON.stringify(p[this.nameKey]) : p[this.nameKey]) : 
-                                                 checkedItems.map((p: any) => typeof p == 'object' ? JSON.stringify(p) : p)).join(', ');
+                                                checkedItems.map((p: any) => typeof p[this.nameKey] == 'object' ?  JSON.stringify(p[this.nameKey]) : p[this.nameKey]) : 
+                                                checkedItems.map((p: any) => typeof p == 'object' ? JSON.stringify(p) : p)).join(', ');
                     } else {
                         if (this.value.length) text = `已选中 ${this.value.length} 项`;
                     }
@@ -105,7 +179,16 @@
                     } else {
                         selectedItem = this.list ? this.list.find(p => p === this.value) : undefined;
                     }
-                    if (selectedItem) text = typeof this.nameKey != 'undefined' ? selectedItem[this.nameKey] : selectedItem;
+                    if (selectedItem) {
+                        text = typeof this.nameKey != 'undefined' ? selectedItem[this.nameKey] : selectedItem;
+                        text = typeof text == 'object' ? JSON.stringify(text) : text;
+                    } else {                       
+                        if (typeof this.valKey === typeof this.nameKey || typeof this.nameKey == 'undefined') {
+                            text = typeof this.value == 'object' ? JSON.stringify(this.value) : this.value;
+                        } else if ((typeof this.valKey != 'undefined' && typeof this.nameKey != 'undefined') || typeof this.valKey == 'undefined') {
+                            if (typeof this.value == 'object') text = this.value[this.nameKey];
+                        }
+                    }
                 }
             }
             return typeof text != 'undefined' ? text : this.defaultText;
@@ -264,13 +347,22 @@
             }
             return 0;
         }
+
+        public filterFocus() {           
+            this.open = true;
+        }
+
+        public clearValue() {
+            this.$emit('input', undefined);
+            this.open = false;
+        }        
     }
 </script>
 <style scoped>
     .dropdown-ui {
         font-size: 14px;
         height: 30px;
-        color: rgba(0, 0, 0, 0.75);
+        color: rgba(0, 0, 0, 0.75);        
         user-select: none;
         -moz-user-select: none;
         -webkit-user-select: none;
@@ -291,11 +383,13 @@
             line-height: 30px;
         }
 
-        .dropdown-ui:hover > label {
+        .dropdown-ui:hover > label,
+        .dropdown-filterWrap > input:focus {
             background: rgba(0, 0, 0, 0.09);
         }
 
-        .dropdown-ui > label::after {
+        .dropdown-ui > label::after,
+        .dropdown-filterWrap:after {
             content: '';
             border-top: 4px solid rgba(0,0,0,.75);
             border-right: 4px solid transparent;
@@ -545,5 +639,83 @@
     .fade-enter-from,
     .fade-leave-to {
         opacity: 0;
+    }
+
+    /*filter-input*/
+    .dropdown-filterWrap {
+        position: relative;
+        height: 100%;
+        width: 100%;
+    }
+
+    .dropdown-filterWrap > input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        background-color: rgba(0, 0, 0, 0.05);
+        padding: 0 46px 0 10px;
+        outline: none;
+        line-height: 24px;
+        border: none;
+        box-sizing: border-box;
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 14px;
+        transition: all .3s ease-in-out;
+        -webkit-transition: all .3s ease-in-out;
+    }
+
+    ::-ms-clear, ::-ms-reveal {
+        display: none;
+    }
+
+    .dropdown-filterWrap > span {
+        position: absolute;
+        top: 0;
+        right: 26px;
+        height: 100%;
+        width: 16px;
+        display: inline-flex;
+        align-items: center;
+        overflow: hidden;       
+        cursor: pointer;
+    }
+
+        .dropdown-filterWrap > span:before {
+            content: "×";
+            color: #fff;
+            text-align: center;
+            line-height: 14px;
+            display: block;
+            height: 14px;
+            width: 14px;
+            font-family: Helvetica Neue, helvetica, tahoma, arial, sans-serif; position: absolute;
+            background: rgba(60,60,60,.5);
+            border-radius: 50%;
+        }
+
+    .dropdown-filterWrap:after {
+        pointer-events: none;
+    }
+
+    ::-webkit-input-placeholder {
+        font-style: italic;
+        color: rgba(0, 0, 0, .5);
+    }
+
+    :-moz-placeholder {
+        font-style: italic;
+        color: rgba(0, 0, 0, .5);
+    }
+
+    ::-moz-placeholder {
+        font-style: italic;
+        color: rgba(0, 0, 0, .5);
+    }
+
+    :-ms-input-placeholder {
+        font-style: italic;
+        color: rgba(0, 0, 0, .5);
     }
 </style>

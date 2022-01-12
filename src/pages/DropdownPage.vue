@@ -5,7 +5,7 @@
           <h3 class="nav_start">下拉框</h3>
           <h4 class="nav_about">Demo案例</h4>
           <div class="demoWrap">
-            <dropdown v-if="hack" v-model="mypet" :datas="datas" :valKey="valKey" :nameKey="nameKey" :placeholder="placeholder" :showTitle="showTitle" :multiMode="multiMode" :multiNameMode="multiNameMode"></dropdown>
+            <dropdown v-if="hack" v-model="mypet" :datas="datas" :valKey="valKey" :nameKey="nameKey" :placeholder="placeholder" :showTitle="showTitle" :multiMode="multiMode" :multiNameMode="multiNameMode" :filterMode="true" :openFlexible="true"></dropdown>
           </div>
           <dl class="setup">
             <div>
@@ -81,8 +81,8 @@ export default class DropdownPage extends Vue {
   private nameKey!: string | undefined;
   private testValType!: boolean;
   private hack!: boolean;
-  private valKeyList: any[] = [{name: '-- 无 --'}, {name: 'val', val: 'val'}];
-  private nameKeyList: any[] = [{name: '-- 无 --'}, {name: 'name', val: 'name'}];
+  private valKeyList: any[] = [{name: '-- 无 --'}, {name: 'val', val: 'val'}, {name: 'name', val: 'name'}];
+  private nameKeyList: any[] = [{name: '-- 无 --'}, {name: 'val', val: 'val'}, {name: 'name', val: 'name'}];
   private list!: any[];
   private t!: any;
 
