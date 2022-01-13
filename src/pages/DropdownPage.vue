@@ -5,14 +5,27 @@
           <h3 class="nav_start">下拉框</h3>
           <h4 class="nav_about">Demo案例</h4>
           <div class="demoWrap">
-            <dropdown v-if="hack" v-model="mypet" :datas="datas" :valKey="valKey" :nameKey="nameKey" :placeholder="placeholder" :showTitle="showTitle" :multiMode="multiMode" :multiNameMode="multiNameMode" :filterMode="true" :openFlexible="true"></dropdown>
+            <dropdown v-if="hack" v-model="mypet" :datas="datas" :valKey="valKey" :nameKey="nameKey" :placeholder="placeholder" :showTitle="showTitle" :multiMode="multiMode" :multiNameMode="multiNameMode" :filterMode="filterMode" :openFlexible="openFlexible"></dropdown>
           </div>
           <dl class="setup">
+            <div>
+              <dt>控件模式</dt>
+              <dd><input id="selectMode" type="radio" value="false" v-model="filterModeSwitch" /><label for="selectMode">选择框</label></dd>
+              <dd><input id="filterMode" type="radio" value="true" v-model="filterModeSwitch" />
+                <span :class="['childCon', {show: filterMode}]"><label for="filterMode">输入框</label>
+                  <span v-if="filterMode">
+                    <span class="nameModeText"> （ 未匹配到选项</span>
+                    <span><input id="filterItem" type="radio" value="false" v-model="flexibleSwitch" /><label for="filterItem">过滤</label></span>
+                    <span><input id="attachItem" type="radio" value="true" v-model="flexibleSwitch" /><label for="attachItem">添加 ）</label></span>
+                  </span>
+                </span>
+              </dd>
+            </div>
             <div>
               <dt>选值模式</dt>
               <dd><input id="single" type="radio" value="false" v-model="patternSwitch" /><label for="single">单选</label></dd>
               <dd><input id="multi" type="radio" value="true" v-model="patternSwitch" />
-                <span :class="['multiNameSelection', {show: multiMode}]"><label for="multi">多选</label>
+                <span :class="['childCon', {show: multiMode}]"><label for="multi">多选</label>
                   <span v-if="multiMode">
                     <span class="nameModeText"> （ 显示方式</span>
                     <span><input id="count" type="radio" value="count" v-model="nameModeSwitch" /><label for="count">计数</label></span>
@@ -80,6 +93,8 @@ export default class DropdownPage extends Vue {
   private valKey!: string | undefined;
   private nameKey!: string | undefined;
   private testValType!: boolean;
+  private filterMode!: boolean;
+  private openFlexible!: boolean;
   private hack!: boolean;
   private valKeyList: any[] = [{name: '-- 无 --'}, {name: 'val', val: 'val'}, {name: 'name', val: 'name'}];
   private nameKeyList: any[] = [{name: '-- 无 --'}, {name: 'val', val: 'val'}, {name: 'name', val: 'name'}];
@@ -103,6 +118,8 @@ export default class DropdownPage extends Vue {
       valKey: this.valKey,
       nameKey: this.nameKey,
       testValType: this.testValType,
+      filterMode: this.filterMode,
+      openFlexible: this.openFlexible,
       hack: this.hack
     }
   }
@@ -111,6 +128,8 @@ export default class DropdownPage extends Vue {
     this.multiMode = false;
     this.multiNameMode = 'count';
     this.asyncMode = false;
+    this.filterMode = false;
+    this.openFlexible = false;
   }
 
   mounted() {
@@ -146,6 +165,27 @@ export default class DropdownPage extends Vue {
                     '柯基', '狸花猫', '大橘', '英短', '蓝猫', '金渐层', '龙猫', '小白兔', '小松鼠'];     
     }
     this.updateDatas();
+    this.updateDotLineView();
+  }
+
+  get filterModeSwitch(){
+    return JSON.stringify(this.filterMode);
+  }
+
+  set filterModeSwitch(value: string){
+    this.mypet = undefined;
+    this.filterMode = JSON.parse(value);
+    this.updateDotLineView();
+  }
+
+  get flexibleSwitch(){
+    return JSON.stringify(this.openFlexible);
+  }
+
+    set flexibleSwitch
+        (value: string) {
+    this.mypet = undefined;
+    this.openFlexible = JSON.parse(value);
     this.updateDotLineView();
   }
 
@@ -248,11 +288,11 @@ export default class DropdownPage extends Vue {
   .setup dd{
     padding-right: 20px;
   }
-  .multiNameSelection{
+  .childCon{
     padding: 2px 0;
     border-radius: 2px;
   }
-  .multiNameSelection.show,
+  .childCon.show,
   .testCon.show{
     background: rgba(248, 255, 137, .4);
     border: 1px solid rgba(0, 128, 0, .35);

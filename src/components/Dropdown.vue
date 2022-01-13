@@ -182,10 +182,10 @@
                     if (selectedItem) {
                         text = typeof this.nameKey != 'undefined' ? selectedItem[this.nameKey] : selectedItem;
                         text = typeof text == 'object' ? JSON.stringify(text) : text;
-                    } else {                       
-                        if (typeof this.valKey === typeof this.nameKey || typeof this.nameKey == 'undefined') {
+                    } else if (this.filterMode && this.openFlexible) {
+                        if (typeof this.valKey === typeof this.nameKey) {
                             text = typeof this.value == 'object' ? JSON.stringify(this.value) : this.value;
-                        } else if ((typeof this.valKey != 'undefined' && typeof this.nameKey != 'undefined') || typeof this.valKey == 'undefined') {
+                        } else if (typeof this.valKey == 'undefined') {
                             if (typeof this.value == 'object') text = this.value[this.nameKey];
                         }
                     }
@@ -235,24 +235,27 @@
 
         //Click an item, and turn it to checked or unchecked.
         public clickMultiLi(item: any) {
-            let checkedIndex: number = this.checkedIndex(item);
-            if (typeof this.value == 'undefined') {
-                let value: any[] = [];
-                this.$emit('input', value);
-            }
-            this.$nextTick(() => {
-                if (checkedIndex > -1) {
-                    this.value.splice(checkedIndex, 1);
-                } else {
+            let checkedIndex: number = this.checkedIndex(item);           
+            if (checkedIndex > -1) {
+                this.value.splice(checkedIndex, 1);
+                if (this.value.length === 0) {
+                    this.$emit('input', undefined);
+                }
+            } else {
+                if (typeof this.value == 'undefined') {
+                    let value: any[] = [];
+                    this.$emit('input', value);
+                }
+                this.$nextTick(() => {
                     if (typeof this.valKey != 'undefined') {
                         this.value.push(item[this.valKey]);
-                        this.value.sort((a: any, b: any) => (this.list as any[]).findIndex((p: any) => p[this.valKey] === a) - (this.list as any).findIndex((p: any) => p[this.valKey] === b));              
+                        this.value.sort((a: any, b: any) => (this.list as any[]).findIndex((p: any) => p[this.valKey] === a) - (this.list as any).findIndex((p: any) => p[this.valKey] === b));
                     } else {
                         this.value.push(item);
                         this.value.sort((a: any, b: any) => (this.list as any[]).indexOf(a) - (this.list as any).indexOf(b));
-                    }                    
-                }
-            });
+                    }
+                });
+            }
         }
 
         public checkedIndex(item: any) {
