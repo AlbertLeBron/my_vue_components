@@ -14,9 +14,9 @@
               <dd><input id="filterMode" type="radio" value="true" v-model="filterModeSwitch" />
                 <span :class="['childCon', {show: filterMode}]"><label for="filterMode">输入框</label>
                   <span v-if="filterMode">
-                    <span class="nameModeText"> （ 未匹配到选项</span>
+                    <span class="nameModeText"> （ 无匹配项</span>
                     <span><input id="filterItem" type="radio" value="false" v-model="flexibleSwitch" /><label for="filterItem">过滤</label></span>
-                    <span><input id="attachItem" type="radio" value="true" v-model="flexibleSwitch" /><label for="attachItem">添加 ）</label></span>
+                    <span><input id="attachItem" type="radio" value="true" v-model="flexibleSwitch" /><label for="attachItem">附加 ）</label></span>
                   </span>
                 </span>
               </dd>
