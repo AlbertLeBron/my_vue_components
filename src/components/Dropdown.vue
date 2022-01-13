@@ -18,7 +18,7 @@
                 <ul v-else-if="shownList && shownList.length">
                     <li v-for="(item, index) in shownList"
                         :key="'it_'+index"
-                        :class="{selected: !multiMode && typeof value != 'undefined' && (typeof valKey != 'undefined' ? value === item[valKey] : value === item)}"
+                        :class="{selected: !filterMode && !multiMode && typeof value != 'undefined' && (typeof valKey != 'undefined' ? value === item[valKey] : value === item)}"
                         @click="selectLi(item)">
                         <span v-if="multiMode" class="dropdown-multiBox">
                             <input type="checkbox" :checked="checkedIndex(item)>-1" /><em></em>
