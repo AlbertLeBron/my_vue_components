@@ -120,7 +120,7 @@
                     if (ulDom) ulDom.scrollTop = doms[this.itemAnchor].offsetTop;
                 }
             } else if (event.keyCode == 40) {
-                this.setItemAnchor(typeof this.itemAnchor != 'undefined' ? this.itemAnchor < doms.length - 1 ? ++this.itemAnchor : doms.length - 1 : 0);
+                this.setItemAnchor(doms ? typeof this.itemAnchor != 'undefined' ? this.itemAnchor < doms.length - 1 ? ++this.itemAnchor : doms.length - 1 : 0 : undefined);
                 if (typeof this.itemAnchor != 'undefined' && doms && ulDom) {
                     let ulDomHeight = ulDom.getBoundingClientRect().height,
                         domHeight = doms[this.itemAnchor].getBoundingClientRect().height;
@@ -242,9 +242,14 @@
             return typeof text != 'undefined' ? text : this.defaultText;
         }
 
-        //Show the selectionbox or hide it.
+        //Show the dropdown list box or hide it.
         public labelToggle() {
             this.open = !this.open;
+            this.datasActionByType();
+        }
+
+        //Different performance by datas type.
+        public datasActionByType() {
             if (this.open && typeof this.datas == 'function') {
                 this.loading = true;
                 this.datas((list: any[]) => {
@@ -403,6 +408,7 @@
         //open the dropdown list when the filter is focused (used in filterMode).
         public filterFocus() {           
             this.open = true;
+            this.datasActionByType();
         }
 
         //clear the value (used in filterMode).
