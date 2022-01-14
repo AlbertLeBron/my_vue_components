@@ -1,7 +1,7 @@
 <template>
     <div class="dropdown-ui" ref="dropdown">
         <div v-if="filterMode" class="dropdown-filterWrap">
-            <input type="text" v-model="filterValue" :placeholder="filterPlaceholder" @focus="filterFocus" @keydown="moveItemAnchor" />
+            <input type="text" v-model="filterValue" :placeholder="filterPlaceholder" @focus="filterFocus" @keydown="filterKeyAction" />
             <span v-show="filterKey || labelText" @click="clearValue"></span>
         </div>        
         <label v-else @click="labelToggle">
@@ -94,7 +94,7 @@
                 } else this.filterKey = '';
             });
             this.$watch('filterKey', () => {
-                this.setItemAnchor();
+                if (this.open) this.setItemAnchor();
             });
         }
 
@@ -102,7 +102,8 @@
             document.removeEventListener('click', this.closeSelect, true);
         }
 
-        public moveItemAnchor(event: any) {
+        //trigger keydown actions of filter input: enter, up and down (used in filterMode).
+        public filterKeyAction(event: any) {
             let doms = this.$refs.li as HTMLElement[],
                 ulDom = this.$refs.ul as HTMLElement;
             if (event.keyCode == 13) {                
@@ -130,30 +131,37 @@
             }
         }
 
+        //keep the index of a anhored item in dropdown (used in filterMode).
         public setItemAnchor(index?: number) {
             this.itemAnchor = index;
         }
 
+        //text shown in the filter input (used in filterMode).
         get filterValue() {
             return typeof this.filterKey != 'undefined' ? this.filterKey : this.labelText;
         }
 
+        //set the filterkey when key words is entered in filter input (used in filterMode).
         set filterValue(value: string) {
             this.filterKey = value;
         }
 
+        //placeholder shown in filter input (used in filterMode).
         get filterPlaceholder() {
             return typeof this.labelText != 'undefined' ? this.labelText : this.placeholder;
         }
 
+        //show the filterList in filterMode and the original list in the others.
         get shownList() {
             return this.filterMode ? this.filterList : this.list;
         }
 
+        //add the key words in filter input to dropdown list or filter it (used in filterMode).
         get canAttachFlexible() {
             return this.openFlexible && !this.multiMode && !(typeof this.valKey != 'undefined' && this.valKey !== this.nameKey);
         }
 
+        //filter the dropdown list by enterd key words in the filter input.
         get filterList() {
             let emptyList: any[] = [];
             if (typeof this.list != 'undefined') {
@@ -273,7 +281,7 @@
             this.open = false;            
         }
 
-        //Click an item, and turn it to checked or unchecked.
+        //Click an item, and turn it to checked or unchecked (used in multiMode).
         public clickMultiLi(item: any) {
             let checkedIndex: number = this.checkedIndex(item);           
             if (checkedIndex > -1) {
@@ -298,6 +306,7 @@
             }
         }
 
+        //Get the index of the current item in value list (used in multiMode).
         public checkedIndex(item: any) {
             return typeof this.value != 'undefined' ? typeof this.valKey != 'undefined' ? this.value.indexOf(item[this.valKey]) : this.value.indexOf(item) : -1;
         }
@@ -330,7 +339,7 @@
                 this.removeTooltip(event);
         }
 
-        //add a tooltip element to tooltipList when an item is mouseentered
+        //add a tooltip element to tooltipList when an item is mouseentered.
         public addTooltip(event: MouseEvent, text: string) {
             if (typeof this.tooltipList == 'undefined') this.tooltipList = [];
             let tooltip = { id: `tooltip_${this.tooltipIdCounter++}`, text: text};
@@ -343,7 +352,7 @@
             }
         }
 
-        //remove a tooltip element to tooltipList when an item is mouseleft
+        //remove a tooltip element to tooltipList when an item is mouseleft.
         public removeTooltip(event: MouseEvent) {
             if (this.tooltipList) {
                 let tooltip = this.tooltipList[this.tooltipList.length - 1];
@@ -352,7 +361,7 @@
             }
         }
 
-        //set position of tooltip 
+        //set position of tooltip.
         public setPosition(item: any, event: MouseEvent) {
             let dom = (this.$refs[item.id] as HTMLElement[])[0] as HTMLElement;
             if (dom) {
@@ -378,7 +387,7 @@
                 let scrollLeft = document.documentElement ? document.documentElement.scrollLeft : document.body.scrollLeft;
                 return e.clientX + scrollLeft;
             }
-            return 0
+            return 0;
         }
 
         public getMouseY(e: MouseEvent): number {
@@ -391,10 +400,12 @@
             return 0;
         }
 
+        //open the dropdown list when the filter is focused (used in filterMode).
         public filterFocus() {           
             this.open = true;
         }
 
+        //clear the value (used in filterMode).
         public clearValue() {
             this.$emit('input', undefined);
             this.open = false;
