@@ -1,7 +1,7 @@
 <template>
     <div class="dropdown-ui" ref="dropdown">
         <div v-if="filterMode" class="dropdown-filterWrap">
-            <input type="text" v-model="filterValue" :placeholder="filterPlaceholder" @focus="filterFocus" />
+            <input type="text" v-model="filterValue" :placeholder="filterPlaceholder" @focus="filterFocus" @keydown="moveItemAnchor" />
             <span v-show="filterKey || labelText" @click="clearValue"></span>
         </div>        
         <label v-else @click="labelToggle">
@@ -15,10 +15,13 @@
                         <div v-for="(item, index) in Array(9).fill(0)" :key="'sp_'+(item+index)"></div>
                     </div>
                 </div>
-                <ul v-else-if="shownList && shownList.length">
+                <ul v-else-if="shownList && shownList.length" ref="ul">
                     <li v-for="(item, index) in shownList"
                         :key="'it_'+index"
-                        :class="{selected: !filterMode && !multiMode && typeof value != 'undefined' && (typeof valKey != 'undefined' ? value === item[valKey] : value === item)}"
+                        ref="li"
+                        :class="{anchored: index === itemAnchor , selected: !filterMode && !multiMode && typeof value != 'undefined' && (typeof valKey != 'undefined' ? value === item[valKey] : value === item)}"
+                        @mouseenter="setItemAnchor(index)"
+                        @mouseleave="setItemAnchor()"
                         @click="selectLi(item)">
                         <span v-if="multiMode" class="dropdown-multiBox">
                             <input type="checkbox" :checked="checkedIndex(item)>-1" /><em></em>
@@ -63,6 +66,7 @@
         private tooltipIdCounter: number = 0;
         private loading!: boolean;
         private filterKey!: string | undefined;
+        private itemAnchor!: number | undefined;
 
         data() {
             return{
@@ -70,7 +74,8 @@
                 list: this.list,
                 loading: this.loading,
                 tooltipList: this.tooltipList,
-                filterKey: this.filterKey
+                filterKey: this.filterKey,
+                itemAnchor: this.itemAnchor
             }
         }
         
@@ -88,10 +93,45 @@
                     this.filterKey = undefined;
                 } else this.filterKey = '';
             });
+            this.$watch('filterKey', () => {
+                this.setItemAnchor();
+            });
         }
 
         beforeDestroy() {
             document.removeEventListener('click', this.closeSelect, true);
+        }
+
+        public moveItemAnchor(event: any) {
+            let doms = this.$refs.li as HTMLElement[],
+                ulDom = this.$refs.ul as HTMLElement;
+            if (event.keyCode == 13) {                
+                if (doms && doms.length && typeof this.itemAnchor != 'undefined') {
+                    if (!this.multiMode) event.target.blur();
+                    doms[this.itemAnchor].click();                    
+                } else {
+                    event.target.blur();
+                    this.open = false;
+                }
+            } else if (event.keyCode == 38) {
+                this.setItemAnchor(typeof this.itemAnchor != 'undefined' && this.itemAnchor > 0 ? --this.itemAnchor : undefined);
+                if (typeof this.itemAnchor != 'undefined' && doms && ulDom && doms[this.itemAnchor].offsetTop < ulDom.scrollTop) {          
+                    if (ulDom) ulDom.scrollTop = doms[this.itemAnchor].offsetTop;
+                }
+            } else if (event.keyCode == 40) {
+                this.setItemAnchor(typeof this.itemAnchor != 'undefined' ? this.itemAnchor < doms.length - 1 ? ++this.itemAnchor : doms.length - 1 : 0);
+                if (typeof this.itemAnchor != 'undefined' && doms && ulDom) {
+                    let ulDomHeight = ulDom.getBoundingClientRect().height,
+                        domHeight = doms[this.itemAnchor].getBoundingClientRect().height;
+                    if (doms[this.itemAnchor].offsetTop > ulDom.scrollTop + ulDomHeight - domHeight) {
+                        if (ulDom) ulDom.scrollTop = doms[this.itemAnchor].offsetTop - ulDomHeight + domHeight;
+                    }
+                }
+            }
+        }
+
+        public setItemAnchor(index?: number) {
+            this.itemAnchor = index;
         }
 
         get filterValue() {
@@ -471,7 +511,7 @@
                     color: #fff;
                 }
 
-                .dropdown-ui ul > li:not(.selected):hover {
+                .dropdown-ui ul > li.anchored:not(.selected) {
                     background: rgba(93,164,241,.2);
                 }
 
