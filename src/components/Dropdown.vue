@@ -17,7 +17,7 @@
                 </div>
                 <div v-else-if="shownListHasItem" class="dropdown-content-wrap">
                     <object type="text/html" class="dropdown-object" ref="contentWatcher" @load="listenContentResize"></object>
-                    <div class="dropdown-scrollbody-wrap" ref="dropdown-scrollbody-wrap" @wheel.prevent="wheelSBW" @scroll="updateSBPos">                        
+                    <div class="dropdown-scrollbody-wrap" ref="dropdown-scrollbody-wrap" @wheel.stop.prevent="wheelSBW" @touchstart.stop.prevent="startMoveSBW" @scroll="updateSBPos">                        
                         <div class="dropdown-ul-wrap">
                             <object type="text/html" class="dropdown-object" ref="ulWatcher" @load="listenUlResize"></object>
                             <ul ref="ul">
@@ -36,7 +36,7 @@
                             </ul>
                         </div>
                     </div>
-                    <div v-if="showScrollbar" class="dropdown-scrollbar-wrap" ref="dropdown-scrollbar-wrap" @mousedown="anchorScroll"><em ref="dropdown-scrollbar-button" @mousedown.stop="startDragScrollBar" @touchstart="startDragScrollBar"></em></div>
+                    <div v-if="showScrollbar" class="dropdown-scrollbar-wrap" ref="dropdown-scrollbar-wrap" @mousedown="anchorScroll"><em ref="dropdown-scrollbar-button" @mousedown.stop="startDragScrollBar"></em></div>
                 </div>
                 <div v-else class="nodata">暂无数据</div>               
             </div>
@@ -439,16 +439,16 @@
 
         //get the yAxis position of touch in mobile device.
         public getTouchY(e: TouchEvent): number {
-            if (e.touches[0].pageX) {
-                return e.touches[0].pageX;
-            } else if (e.touches[0].clientX) {
-                let scrollLeft = document.documentElement ? document.documentElement.scrollLeft : document.body.scrollLeft;
-                return e.touches[0].clientX + scrollLeft;
+            if (e.touches[0].pageY) {
+                return e.touches[0].pageY;
+            } else if (e.touches[0].clientY) {
+                let scrollTop = document.documentElement ? document.documentElement.scrollTop : document.body.scrollTop;
+                return e.touches[0].clientY + scrollTop;
             }
             return 0;
         }
 
-        ////get the yAxis position of mouse or touch.
+        //get the yAxis position of mouse or touch.
         public getY(e: MouseEvent | TouchEvent) {
             if (e.type.indexOf('mouse') > -1) {
                 return this.getMouseY(e as MouseEvent);
@@ -528,30 +528,50 @@
         public anchorScroll(e: MouseEvent) {
             let barWrap = this.$refs['dropdown-scrollbar-wrap'] as HTMLElement,
                 scrollButton = this.$refs['dropdown-scrollbar-button'] as HTMLElement;
-            let cy: number = this.getY(e), distance = (e.offsetY || cy - barWrap.getBoundingClientRect().top) - (scrollButton.offsetTop + scrollButton.offsetHeight / 2);
+            let distance = (e.offsetY || this.getY(e) - barWrap.getBoundingClientRect().top) - (scrollButton.offsetTop + scrollButton.offsetHeight / 2);
             this.updateSBWTop(distance);
         }
 
         //triggered when the dropdown-scrollbar-button mousedown.
-        public startDragScrollBar(event: MouseEvent) {
-            let oy: number = this.getY(event);
+        public startDragScrollBar(e: MouseEvent) {
+            let oy: number = this.getY(e);
             document.onmousemove = this.moveScrollbar(oy);
-            document.ontouchmove = this.moveScrollbar(oy);
             document.addEventListener('mouseup', this.endDragScrollBar);
-            document.addEventListener('touchend', this.endDragScrollBar);
         }
 
         //triggered when the document mouseup (removing related events of dropdown-scrollbar-button).
         public endDragScrollBar() {
             document.onmousemove = null;
-            document.ontouchmove = null;
             document.removeEventListener('mouseup', this.endDragScrollBar);
-            document.removeEventListener('touchend', this.endDragScrollBar);
         }
 
         //triggered when the document mousemove in order to drag the dropdown-scrollbar-button.
         public moveScrollbar(oy: number) {           
-            return (e: MouseEvent | TouchEvent) => {
+            return (e: MouseEvent) => {
+                e.preventDefault();
+                let cy: number = this.getY(e), distance = cy - oy;
+                this.updateSBWTop(distance);
+                oy = cy;
+            };
+        }       
+
+        //
+        public startMoveSBW(e: TouchEvent) {
+            let oy: number = this.getY(e);
+            document.ontouchmove = this.moveSBW(oy);
+            document.addEventListener('touchend', this.endMoveSBW);
+        }
+
+        //triggered when the document mouseup (removing related events of dropdown-scrollbar-button).
+        public endMoveSBW() {
+            document.ontouchmove = null;
+            document.removeEventListener('touchend', this.endMoveSBW);
+        }
+
+        //
+        public moveSBW(oy: number) {
+            return (e: TouchEvent) => {
+                e.stopPropagation();
                 e.preventDefault();
                 let cy: number = this.getY(e), distance = cy - oy;
                 this.updateSBWTop(distance);
@@ -561,6 +581,9 @@
     }
 </script>
 <style scoped>
+    * {
+        touch-action: none;
+    }
     .dropdown-ui {
         font-size: 14px;
         height: 30px;
