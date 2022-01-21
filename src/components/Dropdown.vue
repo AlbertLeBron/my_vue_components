@@ -15,21 +15,30 @@
                         <div v-for="(item, index) in Array(9).fill(0)" :key="'sp_'+(item+index)"></div>
                     </div>
                 </div>
-                <ul v-else-if="shownList && shownList.length" ref="ul">
-                    <li v-for="(item, index) in shownList"
-                        :key="'it_'+index"
-                        ref="li"
-                        :class="{anchored: index === itemAnchor , selected: !filterMode && !multiMode && typeof value != 'undefined' && (typeof valKey != 'undefined' ? value === item[valKey] : value === item)}"
-                        @mouseenter="setItemAnchor(index)"
-                        @mouseleave="setItemAnchor()"
-                        @click="selectLi(item)">
-                        <span v-if="multiMode" class="dropdown-multiBox">
-                            <input type="checkbox" :checked="checkedIndex(item)>-1" /><em></em>
-                        </span>
-                        <div class="dropdown-textDiv"><span class="dropdown-textWrap" @mouseenter="enterLi($event, item)" @mouseleave="leaveLi">{{typeof nameKey != 'undefined' ? item[nameKey] : item}}</span></div>
-                    </li>
-                </ul>
-                <div v-else class="nodata">暂无数据</div>
+                <div v-else-if="shownListHasItem" class="dropdown-content-wrap">
+                    <object type="text/html" class="dropdown-object" ref="contentWatcher" @load="listenContentResize"></object>
+                    <div class="dropdown-scrollbody-wrap" ref="dropdown-scrollbody-wrap" @wheel.prevent="wheelSBW" @scroll="updateSBPos">                        
+                        <div class="dropdown-ul-wrap">
+                            <object type="text/html" class="dropdown-object" ref="ulWatcher" @load="listenUlResize"></object>
+                            <ul ref="ul">
+                                <li v-for="(item, index) in shownList"
+                                    :key="'it_'+index"
+                                    ref="li"
+                                    :class="{anchored: index === itemAnchor , selected: !filterMode && !multiMode && typeof value != 'undefined' && (typeof valKey != 'undefined' ? value === item[valKey] : value === item)}"
+                                    @mouseenter="setItemAnchor(index)"
+                                    @mouseleave="setItemAnchor()"
+                                    @click="selectLi(item)">
+                                    <span v-if="multiMode" class="dropdown-multiBox">
+                                        <input type="checkbox" :checked="checkedIndex(item)>-1" /><em></em>
+                                    </span>
+                                    <div class="dropdown-textDiv"><span class="dropdown-textWrap" @mouseenter="enterLi($event, item)" @mouseleave="leaveLi">{{typeof nameKey != 'undefined' ? item[nameKey] : item}}</span></div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div v-if="showScrollbar" class="dropdown-scrollbar-wrap" ref="dropdown-scrollbar-wrap" @mousedown="anchorScroll"><em ref="dropdown-scrollbar-button" @mousedown.stop="startDragScrollBar" @touchstart="startDragScrollBar"></em></div>
+                </div>
+                <div v-else class="nodata">暂无数据</div>               
             </div>
         </div>
         <div class="dropdown-tooltip-wrap">
@@ -67,6 +76,9 @@
         private loading!: boolean;
         private filterKey!: string | undefined;
         private itemAnchor!: number | undefined;
+        private showScrollbar!: boolean;
+        private mousedownEvent!: MouseEvent;
+        private wheelRatio: number = 3;
 
         data() {
             return{
@@ -75,12 +87,14 @@
                 loading: this.loading,
                 tooltipList: this.tooltipList,
                 filterKey: this.filterKey,
-                itemAnchor: this.itemAnchor
+                itemAnchor: this.itemAnchor,
+                showScrollbar: this.showScrollbar
             }
         }
         
         mounted() {
-            document.addEventListener('click', this.closeSelect, true);
+            document.addEventListener('mousedown', this.setMousedownEvent);
+            document.addEventListener('mouseup', this.closeSelect);
             if (Array.isArray(this.datas)) {
                 this.list = this.datas;
             }
@@ -88,6 +102,7 @@
                 this.list = Array.isArray(this.datas) ? this.datas : undefined;
             });
             this.$watch('open', (open: boolean) => {
+                if (open && this.shownListHasItem) this.updateScrollbar();
                 if (!this.filterMode) return;
                 if (!open) {
                     this.filterKey = undefined;
@@ -99,36 +114,8 @@
         }
 
         beforeDestroy() {
-            document.removeEventListener('click', this.closeSelect, true);
-        }
-
-        //trigger keydown actions of filter input: enter, up and down (used in filterMode).
-        public filterKeyAction(event: any) {
-            let doms = this.$refs.li as HTMLElement[],
-                ulDom = this.$refs.ul as HTMLElement;
-            if (event.keyCode == 13) {                
-                if (doms && doms.length && typeof this.itemAnchor != 'undefined') {
-                    if (!this.multiMode) event.target.blur();
-                    doms[this.itemAnchor].click();                    
-                } else {
-                    event.target.blur();
-                    this.open = false;
-                }
-            } else if (event.keyCode == 38) {
-                this.setItemAnchor(typeof this.itemAnchor != 'undefined' && this.itemAnchor > 0 ? --this.itemAnchor : undefined);
-                if (typeof this.itemAnchor != 'undefined' && doms && ulDom && doms[this.itemAnchor].offsetTop < ulDom.scrollTop) {          
-                    if (ulDom) ulDom.scrollTop = doms[this.itemAnchor].offsetTop;
-                }
-            } else if (event.keyCode == 40) {
-                this.setItemAnchor(doms ? typeof this.itemAnchor != 'undefined' ? this.itemAnchor < doms.length - 1 ? ++this.itemAnchor : doms.length - 1 : 0 : undefined);
-                if (typeof this.itemAnchor != 'undefined' && doms && ulDom) {
-                    let ulDomHeight = ulDom.getBoundingClientRect().height,
-                        domHeight = doms[this.itemAnchor].getBoundingClientRect().height;
-                    if (doms[this.itemAnchor].offsetTop > ulDom.scrollTop + ulDomHeight - domHeight) {
-                        if (ulDom) ulDom.scrollTop = doms[this.itemAnchor].offsetTop - ulDomHeight + domHeight;
-                    }
-                }
-            }
+            document.removeEventListener('mousedown', this.setMousedownEvent);
+            document.removeEventListener('mouseup', this.closeSelect);
         }
 
         //keep the index of a anhored item in dropdown (used in filterMode).
@@ -154,6 +141,15 @@
         //show the filterList in filterMode and the original list in the others.
         get shownList() {
             return this.filterMode ? this.filterList : this.list;
+        }
+
+        //check if the shown list has any item. 
+        get shownListHasItem() {
+            let hasItem = this.shownList && this.shownList.length ? true : false;
+            if (hasItem && this.open) this.$nextTick(() => {
+                this.updateScrollbar();
+            });
+            return hasItem;
         }
 
         //add the key words in filter input to dropdown list or filter it (used in filterMode).
@@ -248,6 +244,35 @@
             this.datasActionByType();
         }
 
+        //trigger keydown actions of filter input: enter, up and down (used in filterMode).
+        public filterKeyAction(event: any) {
+            let doms = this.$refs.li as HTMLElement[],
+                sbWrap = this.$refs['dropdown-scrollbody-wrap'] as HTMLElement;
+            if (event.keyCode == 13) {
+                if (doms && doms.length && typeof this.itemAnchor != 'undefined') {
+                    if (!this.multiMode) event.target.blur();
+                    doms[this.itemAnchor].click();
+                } else {
+                    event.target.blur();
+                    this.open = false;
+                }
+            } else if (event.keyCode == 38) {
+                this.setItemAnchor(typeof this.itemAnchor != 'undefined' && this.itemAnchor > 0 ? --this.itemAnchor : undefined);
+                if (typeof this.itemAnchor != 'undefined' && doms && sbWrap && doms[this.itemAnchor].offsetTop < sbWrap.scrollTop) {
+                    if (sbWrap) sbWrap.scrollTop = doms[this.itemAnchor].offsetTop;
+                }
+            } else if (event.keyCode == 40) {
+                this.setItemAnchor(doms ? typeof this.itemAnchor != 'undefined' ? this.itemAnchor < doms.length - 1 ? ++this.itemAnchor : doms.length - 1 : 0 : undefined);
+                if (typeof this.itemAnchor != 'undefined' && doms && sbWrap) {
+                    let sbWrapHeight = sbWrap.getBoundingClientRect().height,
+                        domHeight = doms[this.itemAnchor].getBoundingClientRect().height;
+                    if (doms[this.itemAnchor].offsetTop > sbWrap.scrollTop + sbWrapHeight - domHeight) {
+                        if (sbWrap) sbWrap.scrollTop = doms[this.itemAnchor].offsetTop - sbWrapHeight + domHeight;
+                    }
+                }
+            }
+        }
+
         //Different performance by datas type.
         public datasActionByType() {
             if (this.open && typeof this.datas == 'function') {
@@ -259,9 +284,14 @@
             } else if (this.loading) this.loading = false;
         }
 
+        //set mousedownEvent
+        public setMousedownEvent(e: MouseEvent) {
+            this.mousedownEvent = e;
+        }
+
         //Hide the selectionbox after clicking the entire document except the component itself.
         public closeSelect(e: MouseEvent) {
-            if ((this.$refs.dropdown as any).contains(e.target)) return;
+            if (!this.mousedownEvent || (this.$refs.dropdown as any).contains(this.mousedownEvent.target) || (this.$refs.dropdown as any).contains(e.target)) return;
             this.open = false;
         }
 
@@ -385,6 +415,7 @@
             }
         }
 
+        //get the xAxis position of mouse.
         public getMouseX(e: MouseEvent): number {
             if (e.pageX != undefined && e.pageX != null) {
                 return e.pageX;
@@ -395,6 +426,7 @@
             return 0;
         }
 
+        //get the yAxis position of mouse.
         public getMouseY(e: MouseEvent): number {
             if (e.pageY) {
                 return e.pageY;
@@ -403,6 +435,26 @@
                 return e.clientX + scrollTop;
             }
             return 0;
+        }
+
+        //get the yAxis position of touch in mobile device.
+        public getTouchY(e: TouchEvent): number {
+            if (e.touches[0].pageX) {
+                return e.touches[0].pageX;
+            } else if (e.touches[0].clientX) {
+                let scrollLeft = document.documentElement ? document.documentElement.scrollLeft : document.body.scrollLeft;
+                return e.touches[0].clientX + scrollLeft;
+            }
+            return 0;
+        }
+
+        ////get the yAxis position of mouse or touch.
+        public getY(e: MouseEvent | TouchEvent) {
+            if (e.type.indexOf('mouse') > -1) {
+                return this.getMouseY(e as MouseEvent);
+            } else if (e.type.indexOf('touch') > -1) {
+                return this.getTouchY(e as TouchEvent);
+            } else return 0;
         }
 
         //open the dropdown list when the filter is focused (used in filterMode).
@@ -415,7 +467,97 @@
         public clearValue() {
             this.$emit('input', undefined);
             this.open = false;
-        }        
+        }
+
+        //triggered when the size of contentWatcher (or dropdown-content-wrap) is changed.
+        public listenContentResize() {
+            let contentWatcher = this.$refs.contentWatcher as HTMLObjectElement;
+            if (contentWatcher && contentWatcher.contentWindow)
+                contentWatcher.contentWindow.addEventListener('resize', this.updateScrollbar);
+        }
+
+        //triggered when the size of ulWatcher (or dropdown-ul-wrap) is changed.
+        public listenUlResize() {
+            let ulWatcher = this.$refs.ulWatcher as HTMLObjectElement;
+            if (ulWatcher && ulWatcher.contentWindow)
+                ulWatcher.contentWindow.addEventListener('resize', this.updateScrollbar);
+        }
+
+        //update scrollbar.
+        public updateScrollbar() {
+            let sbWrap = this.$refs['dropdown-scrollbody-wrap'] as HTMLElement;
+            if (sbWrap && sbWrap.clientHeight < sbWrap.scrollHeight) {
+                this.showScrollbar = true;
+                this.$nextTick(() => {
+                    let scrollButton = this.$refs['dropdown-scrollbar-button'] as HTMLElement,
+                        barWrap = this.$refs['dropdown-scrollbar-wrap'] as HTMLElement;
+                    scrollButton.style.height = barWrap.clientHeight * sbWrap.clientHeight / sbWrap.scrollHeight + 'px';
+                    scrollButton.style.top = Math.round((barWrap.clientHeight - scrollButton.offsetHeight) * sbWrap.scrollTop / (sbWrap.scrollHeight - sbWrap.clientHeight)) + 'px';
+                });
+            } else this.showScrollbar = false;
+        }
+
+        //update scrollButton Position.
+        public updateSBPos() {
+            let sbWrap = this.$refs['dropdown-scrollbody-wrap'] as HTMLElement,
+                scrollButton = this.$refs['dropdown-scrollbar-button'] as HTMLElement,
+                barWrap = this.$refs['dropdown-scrollbar-wrap'] as HTMLElement;           
+            scrollButton.style.top = Math.round((barWrap.clientHeight - scrollButton.offsetHeight) * sbWrap.scrollTop / (sbWrap.scrollHeight - sbWrap.clientHeight)) + 'px';
+        }
+
+        //update scrollTop of dropdown-scrollbody-wrap
+        public updateSBWTop(distance: number) {
+            let sbWrap = this.$refs['dropdown-scrollbody-wrap'] as HTMLElement,
+                barWrap = this.$refs['dropdown-scrollbar-wrap'] as HTMLElement,
+                scrollButton = this.$refs['dropdown-scrollbar-button'] as HTMLElement;
+            if (distance > 0 && scrollButton.offsetTop + distance + scrollButton.offsetHeight >= barWrap.clientHeight) {
+                sbWrap.scrollTop = sbWrap.scrollHeight - sbWrap.clientHeight;
+            } else if (distance < 0 && scrollButton.offsetTop + distance <= 0) {
+                sbWrap.scrollTop = 0;
+            } else {
+                sbWrap.scrollTop = sbWrap.scrollTop + Math.round((sbWrap.scrollHeight - sbWrap.clientHeight) * distance / (barWrap.clientHeight - scrollButton.offsetHeight));
+            }
+        }
+
+        //update scrollTop of dropdown-scrollbody-wrap by mousewheel.
+        public wheelSBW(e: any) {
+            this.updateSBWTop((e.deltaY > 0 ? 1 : -1)*this.wheelRatio);
+        }
+
+        //update the position of scrollButton by clicking dropdown-scrollbar-wrap.
+        public anchorScroll(e: MouseEvent) {
+            let barWrap = this.$refs['dropdown-scrollbar-wrap'] as HTMLElement,
+                scrollButton = this.$refs['dropdown-scrollbar-button'] as HTMLElement;
+            let cy: number = this.getY(e), distance = (e.offsetY || cy - barWrap.getBoundingClientRect().top) - (scrollButton.offsetTop + scrollButton.offsetHeight / 2);
+            this.updateSBWTop(distance);
+        }
+
+        //triggered when the dropdown-scrollbar-button mousedown.
+        public startDragScrollBar(event: MouseEvent) {
+            let oy: number = this.getY(event);
+            document.onmousemove = this.moveScrollbar(oy);
+            document.ontouchmove = this.moveScrollbar(oy);
+            document.addEventListener('mouseup', this.endDragScrollBar);
+            document.addEventListener('touchend', this.endDragScrollBar);
+        }
+
+        //triggered when the document mouseup (removing related events of dropdown-scrollbar-button).
+        public endDragScrollBar() {
+            document.onmousemove = null;
+            document.ontouchmove = null;
+            document.removeEventListener('mouseup', this.endDragScrollBar);
+            document.removeEventListener('touchend', this.endDragScrollBar);
+        }
+
+        //triggered when the document mousemove in order to drag the dropdown-scrollbar-button.
+        public moveScrollbar(oy: number) {           
+            return (e: MouseEvent | TouchEvent) => {
+                e.preventDefault();
+                let cy: number = this.getY(e), distance = cy - oy;
+                this.updateSBWTop(distance);
+                oy = cy;
+            };
+        }
     }
 </script>
 <style scoped>
@@ -498,9 +640,50 @@
             width: 100%;
         }
 
-        .dropdown-ui ul{
+        .dropdown-scrollbody-wrap{
             max-height: 50vh;
-            overflow-y: auto;
+            overflow-y: hidden;
+        }
+
+    .dropdown-content-wrap,
+    .dropdown-ul-wrap {
+        position: relative;
+    }
+
+        .dropdown-object{
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            pointer-events: none;
+            top: 0;
+            left: 0;
+        }
+
+        .dropdown-scrollbar-wrap{
+            position: absolute;            
+            background: rgba(0, 0, 0, .05);
+            height: 100%;
+            width: 10px;
+            top: 0;            
+            right: 0;
+            overflow: hidden;
+        }
+
+        .dropdown-scrollbar-wrap em{
+            display: block;
+            position: absolute;
+            width: 80%;
+            left: 10%;
+            min-height: 20px;
+            background: #ccc;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background .3s;
+            -webkit-transition: background .3s;
+        }
+
+        .dropdown-scrollbar-wrap em:hover{
+            background: #bbb;
         }
 
         .loading {
