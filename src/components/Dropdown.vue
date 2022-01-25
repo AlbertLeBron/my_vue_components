@@ -571,12 +571,14 @@
                     e.preventDefault();
                 };
             document.addEventListener('touchmove', moveSBW, options);
-            document.addEventListener('touchend', endMoveSBW);
+            document.addEventListener('touchend', endMoveSBW, options);
 
             //triggered once the document ends to be touched.
             function endMoveSBW() {
+                e.stopPropagation();
+                e.preventDefault();
                 document.removeEventListener('touchmove', moveSBW, options);
-                document.removeEventListener('touchend', endMoveSBW);
+                document.removeEventListener('touchend', endMoveSBW, options);
             }
 
         }
