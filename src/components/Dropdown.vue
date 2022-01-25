@@ -17,7 +17,7 @@
                 </div>
                 <div v-else-if="shownListHasItem" class="dropdown-content-wrap">
                     <object type="text/html" class="dropdown-object" ref="contentWatcher" @load="listenContentResize"></object>
-                    <div class="dropdown-scrollbody-wrap" ref="dropdown-scrollbody-wrap" @wheel.stop.prevent="wheelSBW" @touchstart.stop.prevent="startMoveSBW" @scroll="updateSBPos">                        
+                    <div class="dropdown-scrollbody-wrap" ref="dropdown-scrollbody-wrap" @wheel.stop.prevent="wheelSBW" @touchstart.stop="startMoveSBW" @scroll="updateSBPos">                        
                         <div class="dropdown-ul-wrap">
                             <object type="text/html" class="dropdown-object" ref="ulWatcher" @load="listenUlResize"></object>
                             <ul ref="ul">
@@ -499,6 +499,7 @@
 
         //update scrollButton Position.
         public updateSBPos() {
+            if (!this.showScrollbar) return;
             let sbWrap = this.$refs['dropdown-scrollbody-wrap'] as HTMLElement,
                 scrollButton = this.$refs['dropdown-scrollbar-button'] as HTMLElement,
                 barWrap = this.$refs['dropdown-scrollbar-wrap'] as HTMLElement;           
@@ -521,6 +522,7 @@
 
         //update scrollTop of dropdown-scrollbody-wrap by mousewheel.
         public wheelSBW(e: any) {
+            if (!this.showScrollbar) return;
             this.updateSBWTop((e.deltaY > 0 ? 1 : -1)*this.wheelRatio);
         }
 
@@ -555,28 +557,28 @@
             };
         }       
 
-        //
+        //triggered once the dropdown-scrollbody-wrap starts to be touched.
         public startMoveSBW(e: TouchEvent) {
-            let oy: number = this.getY(e);
-            document.ontouchmove = this.moveSBW(oy);
-            document.addEventListener('touchend', this.endMoveSBW);
-        }
+            let oy: number = this.getY(e), options = { capture: true, passive: false },
+                moveSBW = this.showScrollbar ? (e: TouchEvent) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    let cy: number = this.getY(e), distance = cy - oy;
+                    this.updateSBWTop(-1 * distance);
+                    oy = cy;
+                } : (e: TouchEvent) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                };
+            document.addEventListener('touchmove', moveSBW, options);
+            document.addEventListener('touchend', endMoveSBW);
 
-        //triggered when the document mouseup (removing related events of dropdown-scrollbar-button).
-        public endMoveSBW() {
-            document.ontouchmove = null;
-            document.removeEventListener('touchend', this.endMoveSBW);
-        }
+            //triggered once the document ends to be touched.
+            function endMoveSBW() {
+                document.removeEventListener('touchmove', moveSBW, options);
+                document.removeEventListener('touchend', endMoveSBW);
+            }
 
-        //
-        public moveSBW(oy: number) {
-            return (e: TouchEvent) => {
-                e.stopPropagation();
-                e.preventDefault();
-                let cy: number = this.getY(e), distance = cy - oy;
-                this.updateSBWTop(distance);
-                oy = cy;
-            };
         }
     }
 </script>
