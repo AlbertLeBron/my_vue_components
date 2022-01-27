@@ -5,7 +5,7 @@
           <h3 class="nav_start">下拉框</h3>
           <h4 class="nav_about">Demo案例</h4>
           <div class="demoWrap">
-            <dropdown v-if="hack" v-model="mypet" :datas="datas" :valKey="valKey" :nameKey="nameKey" :placeholder="placeholder" :showTitle="showTitle" :multiMode="multiMode" :multiNameMode="multiNameMode" :filterMode="filterMode" :openFlexible="openFlexible"></dropdown>
+            <dropdown v-if="hack" v-model="mypet" :datas="datas" :valKey="valKey" :nameKey="nameKey" :placeholder="placeholder" :showTitle="showTitle" :groupBy="groupBy" :multiMode="multiMode" :multiNameMode="multiNameMode" :filterMode="filterMode" :openFlexible="openFlexible"></dropdown>
           </div>
           <dl class="setup">
             <div>
@@ -20,6 +20,11 @@
                   </span>
                 </span>
               </dd>
+            </div>
+            <div>
+              <dt>分组模式</dt>
+              <dd><input id="noGroup" type="radio" value="false" v-model="groupSwitch" /><label for="noGroup">关闭</label></dd>
+              <dd><input id="group" type="radio" value="true" v-model="groupSwitch" /><label for="group">开启</label></dd>
             </div>
             <div>
               <dt>选值模式</dt>
@@ -50,6 +55,7 @@
                 <div class="dropdownGroup">
                   <span><small>valKey值：</small><dropdown v-model="valKeySetting" :datas="valKeyList" :nameKey="'name'"></dropdown></span>
                   <span><small>nameKey值：</small><dropdown v-model="nameKeySetting" :datas="nameKeyList" :nameKey="'name'"></dropdown></span>
+                  <span v-if="groupMode"><small>groupBy值：</small><dropdown v-model="groupBySetting" :datas="groupByList" :nameKey="'name'"></dropdown></span>
                 </div>
                 <div class="resultWrapCon">
                   <div class="resultWrap" title="初始列表">
@@ -90,21 +96,27 @@ export default class DropdownPage extends Vue {
   private showTitle!: 'all' | 'ellipsis' | undefined;
   private multiNameMode!: 'count' | 'string';
   private asyncMode!: boolean;
+  private groupMode!: boolean;
   private valKey!: string | undefined;
   private nameKey!: string | undefined;
+  private groupBy!: any;
   private testValType!: boolean;
   private filterMode!: boolean;
   private openFlexible!: boolean;
   private hack!: boolean;
   private valKeyList: any[] = [{name: '-- 无 --'}, {name: 'val', val: 'val'}, {name: 'name', val: 'name'}];
   private nameKeyList: any[] = [{name: '-- 无 --'}, {name: 'val', val: 'val'}, {name: 'name', val: 'name'}];
+  private groupByList: any[] = [{name: 'type', val: 'type'}, {name: 'belong', val: 'belong'}];
   private list!: any[];
   private t!: any;
 
   data(){
     this.hack = true;    
-    this.datas = this.datasList = this.list = ['中华田园犬', '边牧', '德牧', '上古神兽 —— 蚩尤坐骑 —— 食铁兽 —— 易危国宝 —— 萌萌的 —— 大熊猫', '金毛', '泰迪', '阿拉斯加', '萨摩耶', '哈士奇', '柴犬',
-                                               '柯基', '狸花猫', '大橘', '英短', '蓝猫', '金渐层', '龙猫', '小白兔', '小松鼠'];
+    this.valKey = this.nameKey = 'breed';
+    this.datas = this.datasList = this.list = [{ breed: '中华田园犬', species: '狗' }, { breed: '边牧', species: '狗' }, { breed: '德牧', species: '狗' }, { breed: '上古神兽 —— 蚩尤坐骑 —— 食铁兽 —— 易危国宝 —— 萌萌的 —— 大熊猫', species: '熊' }, { breed: '金毛', species: '狗' },
+                                               { breed: '泰迪', species: '狗' }, { breed: '阿拉斯加', species: '狗' }, { breed: '萨摩耶', species: '狗' }, { breed: '哈士奇', species: '狗' }, { breed: '柴犬', species: '狗' }, { breed: '柯基', species: '狗' },
+                                               { breed: '狸花猫', species: '猫' }, { breed: '大橘', species: '猫' }, { breed: '英短', species: '猫' }, { breed: '蓝猫', species: '猫' }, { breed: '金渐层', species: '猫' },
+                                               { breed: '龙猫', species: '其它' }, { breed: '小白兔', species: '其它' }, { breed: '小松鼠', species: '其它' }];
     this.placeholder = '<请选择小动物>';
     return {
       mypet: this.mypet,
@@ -115,6 +127,8 @@ export default class DropdownPage extends Vue {
       multiNameMode: this.multiNameMode,
       showTitle: this.showTitle,
       asyncMode: this.asyncMode,
+      groupMode: this.groupMode,
+      groupBy: this.groupBy,
       valKey: this.valKey,
       nameKey: this.nameKey,
       testValType: this.testValType,
@@ -128,6 +142,7 @@ export default class DropdownPage extends Vue {
     this.multiMode = false;
     this.multiNameMode = 'count';
     this.asyncMode = false;
+    this.groupMode = false;
     this.filterMode = false;
     this.openFlexible = false;
   }
@@ -154,15 +169,20 @@ export default class DropdownPage extends Vue {
     this.testValType = !this.testValType;
     this.mypet = undefined;
     if (this.testValType) {
-      this.list = [{val: 0, name: '中华田园犬'}, {val: 1, name: '边牧'}, {val: 2, name: 999}, {val: 3, name: true}, 
-                   {val: 4, name: {firstName: 'Grey', lastName: 'Little', nikeyName: 'spot'}},
-                   {val: 5, name: 'Big Yellow', animal: 'dog', type: '金毛巡回猎犬', age: 3, price: '1000'},
-                   {val: 6, name: [1, 2, 3, 4]}];
+      this.valKey = this.nameKey = undefined;
+      this.groupBy = this.groupMode ? this.groupByList[0].val : undefined;
+      this.list = [{val: 0, name: '中华田园犬', type: 'Dog', belong: '动物'}, {val: 1, name: '边牧', type: 'Dog', belong: '动物'}, 
+                   {val: 2, name: 999, type: 'Number', belong: '数据'}, {val: 3, name: true, type: 'Boolean', belong: '数据'}, 
+                   {val: 4, name: {firstName: 'Grey', lastName: 'Little', nikeyName: 'spot'}, type: 'Object', belong: '数据'},
+                   {val: 5, name: 'Big Yellow', type: 'dog', breed: '金毛巡回猎犬', age: 3, price: '1000', belong: '动物'},
+                   {val: 6, name: [1, 2, 3, 4], type: 'Array', belong: '数据'}];
     } else {
-      this.valKey = undefined;
-      this.nameKey = undefined;
-      this.list = ['中华田园犬', '边牧', '德牧', '上古神兽 —— 蚩尤坐骑 —— 食铁兽 —— 易危国宝 —— 萌萌的 —— 大熊猫', '金毛', '泰迪', '阿拉斯加', '萨摩耶', '哈士奇', '柴犬',
-                    '柯基', '狸花猫', '大橘', '英短', '蓝猫', '金渐层', '龙猫', '小白兔', '小松鼠'];     
+      this.valKey = this.nameKey = 'breed';
+      this.groupBy = this.groupMode ? 'species' : undefined;
+      this.list = [{ breed: '中华田园犬', species: '狗' }, { breed: '边牧', species: '狗' }, { breed: '德牧', species: '狗' }, { breed: '上古神兽 —— 蚩尤坐骑 —— 食铁兽 —— 易危国宝 —— 萌萌的 —— 大熊猫', species: '熊' }, { breed: '金毛', species: '狗' },
+                   { breed: '泰迪', species: '狗' }, { breed: '阿拉斯加', species: '狗' }, { breed: '萨摩耶', species: '狗' }, { breed: '哈士奇', species: '狗' }, { breed: '柴犬', species: '狗' }, { breed: '柯基', species: '狗' },
+                   { breed: '狸花猫', species: '猫' }, { breed: '大橘', species: '猫' }, { breed: '英短', species: '猫' }, { breed: '蓝猫', species: '猫' }, { breed: '金渐层', species: '猫' },
+                   { breed: '龙猫', species: '其它' }, { breed: '小白兔', species: '其它' }, { breed: '小松鼠', species: '其它' }];
     }
     this.updateDatas();
     this.updateDotLineView();
@@ -182,8 +202,7 @@ export default class DropdownPage extends Vue {
     return JSON.stringify(this.openFlexible);
   }
 
-    set flexibleSwitch
-        (value: string) {
+  set flexibleSwitch(value: string) {
     this.mypet = undefined;
     this.openFlexible = JSON.parse(value);
     this.updateDotLineView();
@@ -228,13 +247,24 @@ export default class DropdownPage extends Vue {
     this.updateDotLineView();
   }
 
+  get groupSwitch(){    
+    return JSON.stringify(this.groupMode);
+  }
+
+  set groupSwitch(value: string){
+    this.mypet = undefined;
+    this.groupMode = JSON.parse(value);
+    this.groupBy = this.groupMode ? this.testValType? this.groupByList[0].val : 'species' : undefined;
+    this.updateDotLineView();
+  }
+
   get valKeySetting(){
     return this.valKeyList.find((p: any) => p.val == this.valKey);
   }
 
   set valKeySetting(value: any){
     this.mypet = undefined;
-    this.valKey = value.val;    
+    this.valKey = value.val;
     this.updateDotLineView();
   }
 
@@ -244,7 +274,17 @@ export default class DropdownPage extends Vue {
 
   set nameKeySetting(value: any){
     this.mypet = undefined;
-    this.nameKey = value.val;    
+    this.nameKey = value.val;
+    this.updateDotLineView();
+  }
+
+  get groupBySetting(){
+    return this.groupByList.find((p: any) => p.val == this.groupBy);
+  }
+
+  set groupBySetting(value: any){
+    this.mypet = undefined;
+    this.groupBy = value.val;
     this.updateDotLineView();
   }
   
