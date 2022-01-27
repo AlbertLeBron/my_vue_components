@@ -20,18 +20,23 @@
                     <div class="dropdown-scrollbody-wrap" ref="dropdown-scrollbody-wrap" @wheel.stop.prevent="wheelSBW" @touchstart.stop="startMoveSBW" @scroll="updateSBPos">                        
                         <div class="dropdown-ul-wrap">
                             <object type="text/html" class="dropdown-object" ref="ulWatcher" @load="listenUlResize"></object>
-                            <ul ref="ul">
-                                <li v-for="(item, index) in shownList"
-                                    :key="'it_'+index"
-                                    ref="li"
-                                    :class="{anchored: index === itemAnchor , selected: !filterMode && !multiMode && typeof value != 'undefined' && (typeof valKey != 'undefined' ? value === item[valKey] : value === item)}"
-                                    @mouseenter="setItemAnchor(index)"
-                                    @mouseleave="setItemAnchor()"
-                                    @click="selectLi(item)">
-                                    <span v-if="multiMode" class="dropdown-multiBox">
-                                        <input type="checkbox" :checked="checkedIndex(item)>-1" /><em></em>
-                                    </span>
-                                    <div class="dropdown-textDiv"><span class="dropdown-textWrap" @mouseenter="enterLi($event, item)" @mouseleave="leaveLi">{{typeof nameKey != 'undefined' ? item[nameKey] : item}}</span></div>
+                            <ul class="dropdown-ul-root" ref="dropdown-ul-root">
+                                <li v-for="(gsl, gslIndex) in groupShownList" :key="'gsl_'+gsl.guid">
+                                    <div v-if="typeof groupBy != 'undefined'" class="dropdown-ul-groupTitle" @mousedown="groupToggle"><i></i><span>{{gsl.key}}</span></div>
+                                    <ul class="dropdown-ul-group">
+                                        <li v-for="(item, index) in gsl.list"
+                                            :key="'it_'+index"
+                                            ref="li"
+                                            :class="{anchored: realIndex(gslIndex, index) === itemAnchor , selected: !filterMode && !multiMode && typeof value != 'undefined' && (typeof valKey != 'undefined' ? value === item[valKey] : value === item)}"
+                                            @mouseenter="setItemAnchor(realIndex(gslIndex, index))"
+                                            @mouseleave="setItemAnchor()"
+                                            @click="selectLi(item)">
+                                            <span v-if="multiMode" class="dropdown-multiBox">
+                                                <input type="checkbox" :checked="checkedIndex(item)>-1" /><em></em>
+                                            </span>
+                                            <div class="dropdown-textDiv"><span class="dropdown-textWrap" @mouseenter="enterLi($event, item)" @mouseleave="leaveLi">{{typeof nameKey != 'undefined' ? item[nameKey] : item}}</span></div>
+                                        </li>
+                                    </ul>
                                 </li>
                             </ul>
                         </div>
@@ -69,6 +74,7 @@
         @Prop() protected multiNameMode?: 'count' | 'string';
         @Prop() protected filterMode?: boolean;
         @Prop() protected openFlexible?: boolean;
+        @Prop() protected groupBy?: string;
         private open!: boolean;
         private list!: any[] | undefined;
         private tooltipList!: any[] | undefined;
@@ -238,6 +244,28 @@
             return typeof text != 'undefined' ? text : this.defaultText;
         }
 
+        //Show data by group in the dropdown list.
+        get groupShownList() {
+            let groups: any[] = [];
+            if (typeof this.groupBy == 'undefined') {
+                groups = [{ key: 'shownList', list: this.shownList }];
+            } else {
+                let groupKeys: any[] = [];
+                this.shownList?.forEach((item: any) => {
+                    if (groupKeys.indexOf(item[this.groupBy as any]) == -1) {
+                        groupKeys.push(item[this.groupBy as any]);
+                        let guid!: string;
+                        do {
+                            guid = this.generateGuid();
+                        } while (groups.some((p: any) => p.guid === guid));
+                        groups.push({ guid: guid, key: item[this.groupBy as any], list: [] });
+                    }
+                    groups.find((p: any) => p.key === item[this.groupBy as any]).list.push(item);
+                });
+            }
+            return groups;
+        }
+
         //Show the dropdown list box or hide it.
         public labelToggle() {
             this.open = !this.open;
@@ -256,16 +284,22 @@
                     event.target.blur();
                     this.open = false;
                 }
-            } else if (event.keyCode == 38) {
+            } else if (event.keyCode == 38) {               
                 this.setItemAnchor(typeof this.itemAnchor != 'undefined' && this.itemAnchor > 0 ? --this.itemAnchor : undefined);
-                if (typeof this.itemAnchor != 'undefined' && doms && sbWrap && doms[this.itemAnchor].offsetTop < sbWrap.scrollTop) {
-                    if (sbWrap) sbWrap.scrollTop = doms[this.itemAnchor].offsetTop;
+                if (typeof this.itemAnchor != 'undefined' && doms && sbWrap) {
+                    let dugDom = (doms[this.itemAnchor] as any).parentNode.parentNode.getElementsByClassName('dropdown-ul-groupTitle')[0];
+                    if (dugDom?.hasAttribute('dropdown-group-hidden')) dugDom.removeAttribute('dropdown-group-hidden');
+                    if (doms[this.itemAnchor].offsetTop < sbWrap.scrollTop) {
+                        if (sbWrap) sbWrap.scrollTop = doms[this.itemAnchor].offsetTop;
+                    }                    
                 }
             } else if (event.keyCode == 40) {
                 this.setItemAnchor(doms ? typeof this.itemAnchor != 'undefined' ? this.itemAnchor < doms.length - 1 ? ++this.itemAnchor : doms.length - 1 : 0 : undefined);
                 if (typeof this.itemAnchor != 'undefined' && doms && sbWrap) {
-                    let sbWrapHeight = sbWrap.getBoundingClientRect().height,
-                        domHeight = doms[this.itemAnchor].getBoundingClientRect().height;
+                    let sbWrapHeight = sbWrap.getBoundingClientRect().height,                        
+                        dugDom = (doms[this.itemAnchor] as any).parentNode.parentNode.getElementsByClassName('dropdown-ul-groupTitle')[0];
+                    if (dugDom?.hasAttribute('dropdown-group-hidden')) dugDom.removeAttribute('dropdown-group-hidden');
+                    let domHeight = doms[this.itemAnchor].getBoundingClientRect().height;
                     if (doms[this.itemAnchor].offsetTop > sbWrap.scrollTop + sbWrapHeight - domHeight) {
                         if (sbWrap) sbWrap.scrollTop = doms[this.itemAnchor].offsetTop - sbWrapHeight + domHeight;
                     }
@@ -581,12 +615,38 @@
                 document.removeEventListener('touchend', endMoveSBW, options);
             }
 
+        }        
+
+        //Show the current group or hide it.
+        public groupToggle(e: MouseEvent) {
+            let dom = e.currentTarget as HTMLElement;
+            if (dom.hasAttribute('dropdown-group-hidden')) {
+                dom.removeAttribute('dropdown-group-hidden');
+            } else dom.setAttribute('dropdown-group-hidden', '');
+        }
+
+        //Get the real index of the current item in whole list.
+        public realIndex(gslIndex: number, index: number) {
+            let count = 0;
+            for (let i = 0; i < gslIndex; i++) {
+                count += this.groupShownList[i].list.length;
+            }
+            return count + index;
+        }
+
+        //Generate a unique guid for every item in dropdown list.
+        public generateGuid(): string {
+            return ('' + [1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, ch => {
+                let c = Number(ch);
+                return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+            });
         }
     }
 </script>
 <style scoped>
     * {
         touch-action: none;
+        font-family: Helvetica Neue, helvetica, tahoma, arial, sans-serif; 
     }
     .dropdown-ui {
         font-size: 14px;
@@ -618,7 +678,8 @@
         }
 
         .dropdown-ui > label::after,
-        .dropdown-filterWrap:after {
+        .dropdown-filterWrap:after,
+        .dropdown-ul-groupTitle > i:after {
             content: '';
             border-top: 4px solid rgba(0,0,0,.75);
             border-right: 4px solid transparent;
@@ -660,9 +721,13 @@
             background: #fff;
         }
 
-        .dropdown-ui ul, .loading, .nodata {
-            margin: 0;
+        .dropdown-ui ul.dropdown-ul-root, .loading, .nodata {
             padding: 5px 0;
+        }
+
+        .dropdown-ui ul{
+            margin: 0;
+            padding: 0;
             list-style: none;            
             width: 100%;
         }
@@ -725,7 +790,45 @@
             color: #bbb;
         }
 
-            .dropdown-ui ul > li {                
+        .dropdown-ul-groupTitle {
+            position: relative;
+            font-weight:700;
+            padding: 5px 0 0 25px;
+            min-height: 24px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+        }
+
+        .dropdown-ul-groupTitle > i {
+            position: absolute;
+            left:10px;
+            top: 13px;
+            display: inline-block;
+            height: 4px;
+            width: 8px;
+        }
+
+        .dropdown-ul-groupTitle[dropdown-group-hidden] > i {
+            transform: rotate(-90deg);
+            -webkit-transform: rotate(-90deg);
+        }
+
+        .dropdown-ui .dropdown-ul-groupTitle + ul.dropdown-ul-group > li .dropdown-textWrap,
+        .dropdown-ui .dropdown-ul-groupTitle + ul.dropdown-ul-group > li .dropdown-multiBox{
+            padding-left: 25px;
+        }
+
+        .dropdown-ul-groupTitle[dropdown-group-hidden] + ul.dropdown-ul-group {
+            display: none;
+        }
+
+        .dropdown-ul-groupTitle > i:after {
+            right: initial;
+            top: initial;
+        }
+
+            .dropdown-ui ul.dropdown-ul-group > li {                
                 height: 30px;
                 line-height: 30px;
                 cursor: pointer;
@@ -733,32 +836,32 @@
                 display: flex;
             }
 
-                .dropdown-ui ul > li.selected {
+                .dropdown-ui ul.dropdown-ul-group > li.selected {
                     background: #5da4f1;
                     color: #fff;
                 }
 
-                .dropdown-ui ul > li.anchored:not(.selected) {
+                .dropdown-ui ul.dropdown-ul-group > li.anchored:not(.selected) {
                     background: rgba(93,164,241,.2);
                 }
 
-                .dropdown-ui ul > li .dropdown-multiBox{
+                .dropdown-ui ul.dropdown-ul-group > li .dropdown-multiBox {
                     padding: 0 0 0 10px;
                 }
 
-                .dropdown-ui ul > li .dropdown-multiBox + .dropdown-textDiv .dropdown-textWrap{
+                .dropdown-ui ul.dropdown-ul-group > li .dropdown-multiBox + .dropdown-textDiv .dropdown-textWrap{
                     padding-left: 0;
                 }
                 
-                .dropdown-ui ul > li .dropdown-multiBox input[type=checkbox]{
+                .dropdown-ui ul.dropdown-ul-group > li .dropdown-multiBox input[type=checkbox]{
                     display: none;
                 }
 
-                .dropdown-ui ul > li .dropdown-multiBox input[type=checkbox] + em {
+                .dropdown-ui ul.dropdown-ul-group > li .dropdown-multiBox input[type=checkbox] + em {
                     position: relative;
                 }
 
-                .dropdown-ui ul > li .dropdown-multiBox input[type=checkbox] + em:before {
+                .dropdown-ui ul.dropdown-ul-group > li .dropdown-multiBox input[type=checkbox] + em:before {
                     content: '';
                     display: inline-block;
                     vertical-align: middle;
@@ -772,11 +875,11 @@
                     margin-top: -2px;
                 }
 
-                .dropdown-ui ul > li .dropdown-multiBox input[type=checkbox]:checked + em:before {
+                .dropdown-ui ul.dropdown-ul-group > li .dropdown-multiBox input[type=checkbox]:checked + em:before {
                     background-color: #5da4f1;
                 }
 
-                .dropdown-ui ul > li .dropdown-multiBox input[type=checkbox]:checked + em:after {
+                .dropdown-ui ul.dropdown-ul-group > li .dropdown-multiBox input[type=checkbox]:checked + em:after {
                     content: '';
                     display: block;
                     width: 5px;
@@ -791,13 +894,13 @@
                     box-sizing: border-box;
                 }
 
-                .dropdown-ui ul > li .dropdown-textDiv{
+                .dropdown-ui ul.dropdown-ul-group > li .dropdown-textDiv {
                     flex: 1;
                     width: 0;
                     min-width: 0;
                 }
 
-                .dropdown-ui ul > li .dropdown-textWrap {
+                .dropdown-ui ul.dropdown-ul-group > li .dropdown-textWrap {
                     padding: 0 10px;
                     box-sizing: border-box;
                 }
@@ -930,7 +1033,6 @@
         line-height: 24px;
         border: none;
         box-sizing: border-box;
-        font-family: Helvetica, Arial, sans-serif;
         font-size: 14px;
         transition: all .3s ease-in-out;
         -webkit-transition: all .3s ease-in-out;
@@ -959,8 +1061,8 @@
             line-height: 14px;
             display: block;
             height: 14px;
-            width: 14px;
-            font-family: Helvetica Neue, helvetica, tahoma, arial, sans-serif; position: absolute;
+            width: 14px;           
+            position: absolute;
             background: rgba(60,60,60,.5);
             border-radius: 50%;
         }
