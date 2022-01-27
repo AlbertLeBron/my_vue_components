@@ -221,7 +221,7 @@
                             });
                         } else {
                             this.groupShownList?.forEach((item: any) => {
-                                let list = item.list.filter(p => this.value.indexOf(p) > -1);
+                                let list = item.list.filter((p: any) => this.value.indexOf(p) > -1);
                                 if (list.length > 0) {
                                     if (typeof checkedItems == 'undefined') checkedItems = [];
                                     checkedItems = checkedItems.concat(list);
