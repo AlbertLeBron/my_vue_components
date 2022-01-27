@@ -212,9 +212,21 @@
                     if (this.multiNameMode == 'string') {
                         let checkedItems!: any[] | undefined;
                         if (typeof this.valKey != 'undefined') {
-                            checkedItems = this.list ? this.list.filter(p => this.value.indexOf(p[this.valKey]) > -1) : undefined;
+                            this.groupShownList?.forEach((item: any) => {
+                                let list = item.list.filter((p: any) => this.value.indexOf(p[this.valKey]) > -1);
+                                if (list.length > 0) {
+                                    if (typeof checkedItems == 'undefined') checkedItems = [];
+                                    checkedItems = checkedItems.concat(list);
+                                }
+                            });
                         } else {
-                            checkedItems = this.list ? this.list.filter(p => this.value.indexOf(p) > -1) : undefined;
+                            this.groupShownList?.forEach((item: any) => {
+                                let list = item.list.filter(p => this.value.indexOf(p) > -1);
+                                if (list.length > 0) {
+                                    if (typeof checkedItems == 'undefined') checkedItems = [];
+                                    checkedItems = checkedItems.concat(list);
+                                }
+                            });
                         }
                         if (checkedItems) text = (typeof this.nameKey != 'undefined' ? 
                                                 checkedItems.map((p: any) => typeof p[this.nameKey] == 'object' ?  JSON.stringify(p[this.nameKey]) : p[this.nameKey]) : 
