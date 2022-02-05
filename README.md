@@ -54,7 +54,7 @@ export default {
 </script>
 ```
 
-## Props
+## Props（属性）
 
 #### &bull;&nbsp;组件属性绑定&nbsp;&bull;
 
@@ -169,7 +169,7 @@ export default {
     </tr>
 </table>
 
-## License
+## License（授权许可）
 
 MIT 
 
