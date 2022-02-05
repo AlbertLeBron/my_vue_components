@@ -159,13 +159,13 @@ export default {
         <td colspan="2">beforeClick</td>
         <td>function</td>
         <td><code>undefined</code></td>
-        <td>可选，该回调函数在下拉选项click前触发，当前下拉选项为传入参数。</td>
+        <td>可选，该回调函数在下拉选项click前触发，当前下拉选项作为参数传入。</td>
     </tr>
     <tr>
         <td colspan="2">afterClick</td>
         <td>function</td>
         <td><code>undefined</code></td>
-        <td>可选，该回调函数在下拉选项click前触发，当前下拉选项为传入参数。</td>
+        <td>可选，该回调函数在下拉选项click后触发，当前下拉选项作为参数传入。</td>
     </tr>
 </table>
 
