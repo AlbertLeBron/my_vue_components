@@ -153,20 +153,24 @@ export default {
         <td colspan="2">openFlexible</td>
         <td>boolean</td>
         <td><code>false</code></td>
-        <td>可选，输入框模式下生效。是否</td>
+        <td>可选，输入框模式且单选模式且valKey&nameKey特定组合下生效。是否在过滤后的列表中添加输入值作为选项。</td>
     </tr>
     <tr>
         <td colspan="2">beforeClick</td>
-        <td></td>
-        <td><code>""</code></td>
-        <td></td>
+        <td>function</td>
+        <td><code>undefined</code></td>
+        <td>可选，该回调函数在下拉选项click前触发，当前下拉选项为传入参数。</td>
     </tr>
     <tr>
         <td colspan="2">afterClick</td>
-        <td></td>
-        <td><code>""</code></td>
-        <td></td>
+        <td>function</td>
+        <td><code>undefined</code></td>
+        <td>可选，该回调函数在下拉选项click前触发，当前下拉选项为传入参数。</td>
     </tr>
 </table>
+
+## License
+
+MIT 
 
 
