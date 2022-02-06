@@ -6,7 +6,7 @@
                 <template v-for="(item, index) in valueSorted">
                     <div :key="'l_'+index" class="barTouch" :style="{left: index > 0 ? (emLeftPosition[index-1] + 'px') : 0, width: (emLeftPosition[index] - (index > 0 ? emLeftPosition[index-1] : 0)) + 'px', background: colorPool[index % 12]}"
                          @mouseenter="barInfo = {left: index > 0 ? (emLeftPosition[index-1]+emLeftPosition[index])/2 : emLeftPosition[index]/2, info: item.info}" @mouseleave="barInfo = null"></div>
-                    <em :key="'d_'+index" :class="{disable: item.forzen}" :name="typeof item.name !='undefined' ? item.name : ''" :style="{left: emLeftPosition[index] + 'px', background: colorPool[index % 12], info: item.info}" @mousedown="startDrag($event, item);" @touchstart="startDrag($event, item);"></em>
+                    <em :key="'d_'+index" :class="{disable: item.forzen}" :name="typeof item.name !='undefined' ? item.name : ''" :style="{left: emLeftPosition[index] + 'px', background: colorPool[index % 12], info: item.info}" @mousedown.stop="startDrag($event, item);" @touchstart.stop="startDrag($event, item);"></em>
                 </template>
                 <div :class="['barInfo', {show: !!barInfo && barInfo.info}]" :style="{ left: barInfo ? (barInfo.left + 'px') : 0 }" v-html="barInfo && barInfo.info"></div>
             </div>
@@ -79,51 +79,52 @@
                         item: value[value.indexOf(this.curDot.item) + 1],
                         boundary: value[value.indexOf(this.curDot.item) + 1].val - this.valueDiffer((event.currentTarget as HTMLElement).clientWidth)
                     } : undefined,
-                ox: number = this.getX(event);
+                ox: number = this.getX(event), _this = this,
+                options = { capture: true, passive: false },
+                moveFn = (e: MouseEvent | TouchEvent) => {
+                    e.stopPropagation();
+                    e.preventDefault();              
+                    let cx = this.getX(e), distance = cx - ox;
+                    if (distance == 0) return;
+                    let currentValue;
+                    this.curDot.nearVal = undefined;
+                    if (distance > 0 && this.curDot.item.val + this.valueDiffer(distance) >= (nextDot ? nextDot.boundary : this.max)) {
+                        if (nextDot) {
+                            currentValue = nextDot.boundary;
+                            this.curDot.nearVal = nextDot.item.val - 1;
+                        } else currentValue = this.max;                    
+                    } else if (distance < 0 && this.curDot.item.val + this.valueDiffer(distance) <= (lastDot ? lastDot.boundary : (this.close ? this.min + 1 : this.min))) {
+                        if (lastDot) {
+                            currentValue = lastDot.boundary;
+                            this.curDot.nearVal = lastDot.item.val + 1;
+                        } else currentValue = this.close ? this.min + 1 : this.min;
+                    } else {
+                        currentValue = this.curDot.item.val + this.valueDiffer(distance);
+                        if (nextDot && Math.round(Number(currentValue)) == nextDot.item.val){
+                            this.curDot.nearVal = nextDot.item.val - 1;
+                        } else if (lastDot && Math.round(Number(currentValue)) == lastDot.item.val) {
+                            this.curDot.nearVal = lastDot.item.val + 1;
+                        }                    
+                    }
+                    this.curDot.item.val = Number(currentValue);
+                    ox = cx;
+                };
 
-            document.onmousemove = this.moveFn(ox, lastDot, nextDot);
-            document.ontouchmove = this.moveFn(ox, lastDot, nextDot);
-            document.addEventListener('mouseup', this.endDrag);
-            document.addEventListener('touchend', this.endDrag);
-        }
+            document.addEventListener('mousemove', moveFn, options);
+            document.addEventListener('touchmove', moveFn, options);
+            document.addEventListener('mouseup', endDrag, options);
+            document.addEventListener('touchend', endDrag, options);
 
-        public moveFn(ox: number, lastDot: any, nextDot: any){
-            return (e: MouseEvent | TouchEvent) => {
-                e.preventDefault();               
-                let cx = this.getX(e), distance = cx - ox;
-                if (distance == 0) return;
-                let currentValue;
-                this.curDot.nearVal = undefined;
-                if (distance > 0 && this.curDot.item.val + this.valueDiffer(distance) >= (nextDot ? nextDot.boundary : this.max)) {
-                    if (nextDot) {
-                        currentValue = nextDot.boundary;
-                        this.curDot.nearVal = nextDot.item.val - 1;
-                    } else currentValue = this.max;                    
-                } else if (distance < 0 && this.curDot.item.val + this.valueDiffer(distance) <= (lastDot ? lastDot.boundary : (this.close ? this.min + 1 : this.min))) {
-                    if (lastDot) {
-                        currentValue = lastDot.boundary;
-                        this.curDot.nearVal = lastDot.item.val + 1;
-                    } else currentValue = this.close ? this.min + 1 : this.min;
-                } else {
-                    currentValue = this.curDot.item.val + this.valueDiffer(distance);
-                    if (nextDot && Math.round(Number(currentValue)) == nextDot.item.val){
-                        this.curDot.nearVal = nextDot.item.val - 1;
-                    } else if (lastDot && Math.round(Number(currentValue)) == lastDot.item.val) {
-                        this.curDot.nearVal = lastDot.item.val + 1;
-                    }                    
-                }
-                this.curDot.item.val = Number(currentValue);
-                ox = cx;
+            function endDrag(e: MouseEvent | TouchEvent) {
+                e.stopPropagation();
+                e.preventDefault();
+                _this.curDot.item.val = _this.curDot.nearVal != undefined ? _this.curDot.nearVal : Math.round(Number(_this.curDot.item.val));
+                _this.curDot = null;
+                document.removeEventListener('mousemove', moveFn, options);
+                document.removeEventListener('touchmove', moveFn, options);
+                document.removeEventListener('mouseup', endDrag, options);
+                document.removeEventListener('touchend', endDrag, options);
             }
-        }
-
-        public endDrag() {
-            this.curDot.item.val = this.curDot.nearVal != undefined ? this.curDot.nearVal : Math.round(Number(this.curDot.item.val));
-            this.curDot = null;
-            document.onmousemove = null;
-            document.ontouchmove = null;
-            document.removeEventListener('mouseup', this.endDrag);
-            document.removeEventListener('touchend', this.endDrag);
         }
 
         public legalValue() {
@@ -164,7 +165,7 @@
                 let scrollLeft = document.documentElement ? document.documentElement.scrollLeft : document.body.scrollLeft;
                 return e.clientX + scrollLeft;
             }
-            return 0
+            return 0;
         }
 
         public getTouchX (e: TouchEvent): number {
@@ -174,7 +175,7 @@
                 let scrollLeft = document.documentElement ? document.documentElement.scrollLeft : document.body.scrollLeft;
                 return e.touches[0].clientX + scrollLeft;
             }
-            return 0
+            return 0;
         }
     }
 </script>

@@ -4,11 +4,11 @@
             <div class="bar" ref="bar" @click="choosePoint">
                 <template v-if="reversion">
                     <span v-bind:style="{width: emLeftPosition_reversion + 'px'}"></span>
-                    <em v-bind:style="{left: emLeftPosition_reversion + 'px'}" @mousedown="startDrag_reversion" @touchstart="startDrag_reversion" @click="$event.stopPropagation();"></em>
+                    <em v-bind:style="{left: emLeftPosition_reversion + 'px'}" @mousedown.stop="startDrag_reversion" @touchstart.stop="startDrag_reversion"></em>
                 </template>
                 <template v-else>
                     <span v-bind:style="{width: emLeftPosition + 'px'}"></span>
-                    <em v-bind:style="{left: emLeftPosition + 'px'}" @mousedown="startDrag" @touchstart="startDrag" @click="$event.stopPropagation();"></em>
+                    <em v-bind:style="{left: emLeftPosition + 'px'}" @mousedown.stop="startDrag" @touchstart.stop="startDrag"></em>
                 </template>
             </div>
         </div>
@@ -16,25 +16,6 @@
 </template>
 
 <script lang="ts">
-/* Start Header ------------------------------------------------------------
-
-    Kodak Inc.
-    Shanghai PDC China
-    V5G 4M1
-
-    Copyright(C) 2020 Kodak Inc.
-
-    Reproduction or disclosure of this file or its contents without the
-    prior written consent of Kodak is prohibited.
-
-    File Name: Range.vue
-
-    Purpose:
-
-    Project: Kodak On Demand
-
-* End Header--------------------------------------------------------------
-*/
     import { Component, Prop, Vue } from 'vue-property-decorator';
 
     @Component
@@ -73,63 +54,75 @@
         }
 
         public countToFixed(value: number): any {
-            return this.toFixed ? value.toFixed(this.toFixed) : value;
+            return typeof this.toFixed != 'undefined' ? value.toFixed(this.toFixed) : value;
         }
 
         public startDrag(event: MouseEvent | TouchEvent) {
-            let ox: number = this.getX(event);
-            document.onmousemove = this.moveFn(ox);
-            document.ontouchmove = this.moveFn(ox);
-            document.addEventListener('mouseup', this.endDrag);
-            document.addEventListener('touchend', this.endDrag);
-        }
+            let ox: number = this.getX(event), _this = this, options = { capture: true, passive: false },
+                moveFn = (e: MouseEvent | TouchEvent) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    let cx: number = this.getX(e), distance = cx - ox, currentValue;
+                    if (distance == 0) return;
+                    if (distance > 0 && this.value + this.valueDiffer(distance) >= this.max) {
+                        currentValue = this.max;
+                    } else if (distance < 0 && this.value + this.valueDiffer(distance) <= this.min) {
+                        currentValue = this.min;
+                    } else {
+                        currentValue = this.value + this.valueDiffer(distance);
+                    }
+                    this.$emit('input', Number(this.countToFixed(Number(currentValue))));
+                    ox = cx;
+                };
 
-        public moveFn(ox: number) {
-            return (e: MouseEvent | TouchEvent) => {
+            document.addEventListener('mousemove', moveFn, options);
+            document.addEventListener('touchmove', moveFn, options);
+            document.addEventListener('mouseup', endDrag, options);
+            document.addEventListener('touchend', endDrag, options);
+
+            function endDrag(e: MouseEvent | TouchEvent) {
+                e.stopPropagation();
                 e.preventDefault();
-                let cx: number = this.getX(e), distance = cx - ox, currentValue;
-                if (distance > 0 && this.value + this.valueDiffer(distance) >= this.max) {
-                    currentValue = this.max;
-                } else if (distance < 0 && this.value + this.valueDiffer(distance) <= this.min) {
-                    currentValue = this.min;
-                } else {
-                    currentValue = this.value + this.valueDiffer(distance);
-                }
-                this.$emit('input', Number(this.countToFixed(Number(currentValue))));
-                ox = cx;
-            };
+                _this.$emit('input', Number((_this.value)));
+                document.removeEventListener('mousemove', moveFn, options);
+                document.removeEventListener('touchmove', moveFn, options);
+                document.removeEventListener('mouseup', endDrag, options);
+                document.removeEventListener('touchend', endDrag, options);
+            }
         }
 
         public startDrag_reversion(event: MouseEvent | TouchEvent) {
-            let ox: number = this.getX(event);
-            document.onmousemove = this.moveFn_reversion(ox);
-            document.ontouchmove = this.moveFn_reversion(ox);
-            document.addEventListener('mouseup', this.endDrag);
-            document.addEventListener('touchend', this.endDrag);
-        }
+            let ox: number = this.getX(event), _this = this, options = { capture: true, passive: false },
+                moveFn = (e: MouseEvent | TouchEvent) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    let cx = this.getX(e), distance = cx - ox, currentValue;
+                    if (distance == 0) return;
+                    if (distance > 0 && this.value - this.valueDiffer(distance) <= this.min) {
+                        currentValue = this.min;
+                    } else if (distance < 0 && this.value - this.valueDiffer(distance) >= this.max) {
+                        currentValue = this.max;
+                    } else {
+                        currentValue = this.value - this.valueDiffer(distance);
+                    }
+                    this.$emit('input', Number(this.countToFixed(Number(currentValue))));
+                    ox = cx;
+                };
 
-        public moveFn_reversion(ox: number) {
-            return (e: MouseEvent | TouchEvent) => {
+            document.addEventListener('mousemove', moveFn, options);
+            document.addEventListener('touchmove', moveFn, options);
+            document.addEventListener('mouseup', endDrag, options);
+            document.addEventListener('touchend', endDrag, options);
+
+            function endDrag(e: MouseEvent | TouchEvent) {
+                e.stopPropagation();
                 e.preventDefault();
-                let cx = this.getX(e), distance = cx - ox, currentValue;
-                if (distance > 0 && this.value - this.valueDiffer(distance) <= this.min) {
-                    currentValue = this.min;
-                } else if (distance < 0 && this.value - this.valueDiffer(distance) >= this.max) {
-                    currentValue = this.max;
-                } else {
-                    currentValue = this.value - this.valueDiffer(distance);
-                }
-                this.$emit('input', Number(this.countToFixed(Number(currentValue))));
-                ox = cx;
-            };
-        }
-
-        public endDrag() {
-            this.$emit('input', Number((this.value)));
-            document.onmousemove = null;
-            document.ontouchmove = null;
-            document.removeEventListener('mouseup', this.endDrag);
-            document.removeEventListener('touchend', this.endDrag);
+                _this.$emit('input', Number((_this.value)));
+                document.removeEventListener('mousemove', moveFn, options);
+                document.removeEventListener('touchmove', moveFn, options);
+                document.removeEventListener('mouseup', endDrag, options);
+                document.removeEventListener('touchend', endDrag, options);
+            }
         }
 
         public choosePoint(event: MouseEvent) {
