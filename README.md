@@ -1,6 +1,6 @@
 <p align="center">
   <a href="http://119.3.144.14:8080">
-    <a href="http://119.3.144.14:8080"><img src="public/theme.JPG" width="90" height="90" alt="Vue组件"></a>
+    <a href="http://119.3.144.14:8080"><img src="https://cn.vuejs.org/images/logo.svg" width="160" height="160" alt="Vue组件"></a>
   </a>
 </p>
 
