@@ -4,11 +4,11 @@
             <div class="bar" ref="bar" @click="choosePoint">
                 <template v-if="reversion">
                     <span v-bind:style="{width: emLeftPosition_reversion + 'px'}"></span>
-                    <em v-bind:style="{left: emLeftPosition_reversion + 'px'}" @mousedown.stop="startDrag_reversion" @touchstart.stop="startDrag_reversion"></em>
+                    <em v-bind:style="{left: emLeftPosition_reversion + 'px'}" @mousedown.stop="startDrag_reversion" @touchstart.stop="startDrag_reversion" @click="$event.stopPropagation();"></em>
                 </template>
                 <template v-else>
                     <span v-bind:style="{width: emLeftPosition + 'px'}"></span>
-                    <em v-bind:style="{left: emLeftPosition + 'px'}" @mousedown.stop="startDrag" @touchstart.stop="startDrag"></em>
+                    <em v-bind:style="{left: emLeftPosition + 'px'}" @mousedown.stop="startDrag" @touchstart.stop="startDrag" @click="$event.stopPropagation();"></em>
                 </template>
             </div>
         </div>
