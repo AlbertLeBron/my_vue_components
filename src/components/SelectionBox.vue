@@ -18,7 +18,7 @@
                 </div>
             </div>
             <div class="operations">
-                <div class="button" :disabled="!originalSelectedItem" @click="addItem">{{buttonNames && buttonNames.add ? buttonNames.add : '添 加'}} >></div>
+                <div class="button" :disabled="!(originalSelectedItem && currentList.indexOf(originalSelectedItem) == -1)" @click="addItem">{{buttonNames && buttonNames.add ? buttonNames.add : '添 加'}} >></div>
                 <div class="button" :disabled="!currentSelectedItem" @click="deleteItem">{{buttonNames && buttonNames.delete ? buttonNames.delete : '删 除'}}</div>
                 <div class="button" :disabled="!(currentSelectedItem && currentList.indexOf(currentSelectedItem) > 0)" @click="upItem">{{buttonNames && buttonNames.up ? buttonNames.up : '上 移'}}</div>
                 <div class="button" :disabled="!(currentSelectedItem && currentList.indexOf(currentSelectedItem) < currentList.length - 1)" @click="downItem">{{buttonNames && buttonNames.down ? buttonNames.down : '下 移'}}</div>

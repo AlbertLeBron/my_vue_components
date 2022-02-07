@@ -25,7 +25,7 @@ export default new VueRouter({
                 path: '/dotLine',
                 component: DotLinePage
             },{
-                path: '/selectionbox',
+                path: '/transfer',
                 component: SelectionBoxPage
             }
         ]

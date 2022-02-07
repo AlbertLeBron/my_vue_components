@@ -2,7 +2,7 @@
   <div>
       <div class="content">
         <section>
-          <h3 class="nav_start">下拉框</h3>
+          <h3 class="nav_start">下拉选择框</h3>
           <h4 class="nav_about">Demo案例</h4>
           <div class="demoWrap">
             <dropdown v-if="hack" v-model="mypet" :datas="datas" :valKey="valKey" :nameKey="nameKey" :placeholder="placeholder" :showTitle="showTitle" :groupBy="groupBy" :multiMode="multiMode" :multiNameMode="multiNameMode" :filterMode="filterMode" :openFlexible="openFlexible"></dropdown>

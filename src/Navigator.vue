@@ -26,11 +26,11 @@ export default class Navigator extends Vue {
   @Prop() private open!: boolean;
 
   data(){
-    this.category = [{path: '/dropdown', title: '下拉框', name: 'Dropdown'},
+    this.category = [{path: '/dropdown', title: '下拉选择框', name: 'Dropdown'},
                      {path: '/combo', title: '弹出菜单', name: 'PopupMenu', disabled: true},
                      {path: '/range', title: '滑块', name: 'Range'},
                      {path: '/dotLine', title: '分段滑块', name: 'DotLine'},
-                     {path: '/selectionbox', title: '选择框', name: 'SelectionBox'}];
+                     {path: '/transfer', title: '穿梭框', name: 'Transfer'}];
     return {
       category: this.category
     }

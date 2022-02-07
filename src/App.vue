@@ -68,7 +68,7 @@ export default class App extends Vue {
 
     @media screen and (max-width: 960px) {
       .navigator{
-        width: 80px;
+        width: 90px;
       }
       .navigator /deep/ .logo{
         height: 50px;
