@@ -1,6 +1,6 @@
 import VueRouter from 'vue-router';
 import DropdownPage from '../pages/DropdownPage.vue';
-import ComboPage from '../pages/ComboPage.vue';
+import PopupMenuPage from '../pages/PopupMenuPage.vue';
 import RangePage from '../pages/RangePage.vue';
 import DotLinePage from '../pages/DotLinePage.vue';
 import SelectionBoxPage from '../pages/SelectionBoxPage.vue';
@@ -16,8 +16,8 @@ export default new VueRouter({
                 path: '/dropdown',
                 component: DropdownPage
             },{
-                path: '/combo',
-                component: ComboPage
+                path: '/popupmenu',
+                component: PopupMenuPage
             },{
                 path: '/range',
                 component: RangePage

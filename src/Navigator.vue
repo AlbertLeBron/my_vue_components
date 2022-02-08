@@ -27,7 +27,7 @@ export default class Navigator extends Vue {
 
   data(){
     this.category = [{path: '/dropdown', title: '下拉选择框', name: 'Dropdown'},
-                     {path: '/combo', title: '弹出菜单', name: 'PopupMenu', disabled: true},
+                     {path: '/popupmenu', title: '弹出菜单', name: 'PopupMenu'},
                      {path: '/range', title: '滑块', name: 'Range'},
                      {path: '/dotLine', title: '分段滑块', name: 'DotLine'},
                      {path: '/transfer', title: '穿梭框', name: 'Transfer'}];

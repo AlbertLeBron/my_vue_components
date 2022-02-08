@@ -1,5 +1,5 @@
 <template>
-    <div class="dropdown-ui" ref="dropdown">
+    <div class="dropdown-ui" ref="dropdown" @contextmenu="$event.stopPropagation();$event.preventDefault();">
         <div v-if="filterMode" class="dropdown-filterWrap">
             <input type="text" v-model="filterValue" :placeholder="filterPlaceholder" @focus="filterFocus" @keydown="filterKeyAction" />
             <span v-show="filterKey || labelText" @click="clearValue"></span>
@@ -620,7 +620,7 @@
             document.addEventListener('touchend', endMoveSBW, options);
 
             //triggered once the document ends to be touched.
-            function endMoveSBW() {
+            function endMoveSBW(e: TouchEvent) {
                 e.stopPropagation();
                 e.preventDefault();
                 document.removeEventListener('touchmove', moveSBW, options);
