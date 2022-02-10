@@ -1,30 +1,27 @@
 <template>
-    <div class="popupMenuBox" ref="popupMenuBox">
-        <div v-for="(item, index) in contextMenuBox" :key="'pm_'+index" v-show="item.showContextMenu" ref="contextMenu" class="popup-menu hide" :level="index" :style="computedStyle(item)" @mouseleave="dropLeave($event, index)" @click="$event.stopPropagation();$event.preventDefault();" @contextmenu="$event.stopPropagation();$event.preventDefault();">
-            <ul v-if="item.contextMenuData && item.contextMenuData.items && item.contextMenuData.items.length">
+    <div :class="['popupMenuBox', {free: useMode != 'pinned'}]" ref="popupMenuBox">
+        <div v-for="(item, index) in popupMenuBox" :key="'pm_'+index" v-show="item.showPopupMenu" ref="popupMenu" class="popup-menu hide" :level="index" :style="computedStyle(item.popupMenuData.event)" @mouseleave="dropLeave($event, index)" @click.stop.prevent="" @contextmenu.stop.prevent="">
+            <ul>
                 <perfect-scrollbar ref="scrollbar">
-                    <div>
-                        <li v-for="(subItem, subIndex) in item.contextMenuData.items" :key="'li_'+subIndex"
+                    <object type="text/html" class="pm-object" ref="contentWatcher" @load="listenContentResize(index)"></object>
+                    <div v-if="item.popupMenuData && item.popupMenuData.items && item.popupMenuData.items.length">
+                        <li v-for="(subItem, subIndex) in item.popupMenuData.items" :key="'li_'+subIndex"
                             :class="{ seperator: subItem.isSeperator, disabled: subItem.disabled, hovered: subItem.hovered }"
                             @click="itemSelected(subItem)"
                             @mouseenter="itemEnter($event,subIndex,subItem,index)"
                             @mouseleave="itemLeave($event,subIndex,subItem,index)">
-                            <span v-if="!subItem.isSeperator" :class="['iconfont', subItem.icon]"></span>
+                            <span v-if="!subItem.isSeperator" :class="['icon', subItem.icon]"></span>
                             <span :class="[!subItem.disabled && subItem.red? 'error': '', 'text']">{{subItem.title}}</span>
-                            <i v-if="subItem.hasSubMenuItems" class="icon-Chevron_r"></i>
+                            <i v-if="subItem.subMenuItems || subItem.callback" class="icon-Chevron_r"></i>
                         </li>
                     </div>
-                </perfect-scrollbar>
-            </ul>
-            <ul v-else-if="item.contextMenuData && item.contextMenuData.callback">
-                <div class="loading">
-                    <div class="loading-circle">
-                        <div v-for="(item, index) in Array(9).fill(0)" :key="'sp_'+(item+index)"></div>
+                    <div v-else-if="item.popupMenuData && item.popupMenuData.callback" class="loading">
+                        <div class="loading-circle">
+                            <div v-for="(item, index) in Array(9).fill(0)" :key="'sp_'+(item+index)"></div>
+                        </div>
                     </div>
-                </div>
-            </ul>
-            <ul v-else>
-                <li class="disabled nodata">暂无数据</li>
+                    <div v-else class="nodata"><span>暂无数据</span></div>
+                </perfect-scrollbar>               
             </ul>
         </div>
     </div>
@@ -34,20 +31,16 @@
     import { Component, Prop, Vue } from 'vue-property-decorator';
 
     @Component
-    export default class Popup extends Vue {
+    export default class PopupMenu extends Vue {
         @Prop() protected useMode!: 'pinned' | 'free';
-        private showProgressBar: boolean = false;
-        private showToolTip: boolean = false;
         private depth!: number;
-        private contextMenuBox!: any[];
-        private toastList!: any[];
-        private toolTipData!: any;
+        private popupMenuBox!: any[];
         private mousedownEvent!: MouseEvent;
 
         data() {
-            this.contextMenuBox = [];
+            this.popupMenuBox = [];
             return {
-                contextMenuBox: this.contextMenuBox
+                popupMenuBox: this.popupMenuBox
             }
         }
 
@@ -61,14 +54,14 @@
             document.removeEventListener('mouseup', this.closeSelect);
         }
 
-        public computedStyle(item: any) {
-            return "left:" + this.getMouseX(item.contextMenuData.event) + "px; top:" + this.getMouseY(item.contextMenuData.event) + "px;";
+        public computedStyle(event: any) {
+            return {left: this.getMouseX(event) + "px", top: this.getMouseY(event) + "px"};
         }
 
         public itemSelected(item: any): void {
             if (!item.isSeperator && !item.disabled && item.selectedCallback) {
-                item.selectedCallback(item);
-                this.hideContextMenu();
+                item.selectedCallback(JSON.parse(JSON.stringify(item)));
+                this.hidePopupMenu();
             }
         }
 
@@ -78,131 +71,170 @@
 
         public closeSelect(e: MouseEvent) {
             if (!this.mousedownEvent || (this.$refs.popupMenuBox as any).contains(this.mousedownEvent.target) || (this.$refs.popupMenuBox as any).contains(e.target)) return;
-            this.hideContextMenu();
+            this.hidePopupMenu();
         }
 
-        public hideContextMenu() {
-            this.contextMenuBox.forEach((item: any, index: number) => {
-                this.$set(this.contextMenuBox, index, { contextMenuData: item.contextMenuData, showContextMenu: false });
+        public hidePopupMenu() {
+            this.popupMenuBox.forEach((item: any, index: number) => {
+                this.$set(this.popupMenuBox, index, { popupMenuData: item.popupMenuData, showPopupMenu: false });
             });
         }
 
         public itemEnter(event: MouseEvent, subIndex: number, subItem: any, level: number): void {
-            if (subItem.hasSubMenuItems && (subItem.subMenuItems || subItem.callback)) {
+            if (subItem.subMenuItems || subItem.callback) {
                 let data = { level: level, item: subItem, index: subIndex },
                     index = data.level + 1,
-                    item = this.contextMenuBox[index],
-                contextMenu = (this.$refs['contextMenu'] as any)[data.level] as HTMLElement;
+                    item = this.popupMenuBox[index],
+                    curItems = item.popupMenuData.items,
+                    popupMenu = (this.$refs['popupMenu'] as any)[data.level] as HTMLElement;
                 data.item.hovered = true;
-                item.contextMenuData.event.pageX = this.contextMenuBox[data.level].contextMenuData.event.pageX + contextMenu.getBoundingClientRect().width - 4;
-                item.contextMenuData.event.pageY = this.contextMenuBox[data.level].contextMenuData.event.pageY + data.index * 30 + 6;
-                item.contextMenuData.items = data.item.subMenuItems;
-                item.showContextMenu = true;
-                this.$set(this.contextMenuBox[data.level].contextMenuData.items, data.index, data.item);
-                this.$set(this.contextMenuBox, index, item);
-                this.$nextTick(() => {
+                item.popupMenuData.event.pageX = this.popupMenuBox[data.level].popupMenuData.event.pageX + popupMenu.getBoundingClientRect().width - 2;
+                item.popupMenuData.event.pageY = this.popupMenuBox[data.level].popupMenuData.event.pageY + data.index * (event.target as HTMLElement).getBoundingClientRect().height + 6;
+                item.popupMenuData.items = data.item.subMenuItems;
+                item.popupMenuData.callback = data.item.callback;
+                item.popupMenuData.callbackExcuting = data.item.callbackExcuting;
+                item.popupMenuData.ancIndex = subIndex;
+                item.showPopupMenu = true;
+                this.$set(this.popupMenuBox[data.level].popupMenuData.items, data.index, data.item);
+                this.$set(this.popupMenuBox, index, item);                
+                this.$nextTick(() => {   
                     this.setMenuPosition(event, index);
-                    this.updateScrollbar(index);
+                    this.updateScrollbar(index, curItems !== item.popupMenuData.items);
                 });
+                if (!item.popupMenuData.items && item.popupMenuData.callback && !item.popupMenuData.callbackExcuting) {
+                    data.item.callbackExcuting = true;
+                    let ancIndex = item.popupMenuData.ancIndex;
+                    item.popupMenuData.callback((list: any[]) => {
+                        data.item.subMenuItems = list;
+                        item.popupMenuData.callbackExcuting = false;
+                        if (item.popupMenuData.ancIndex == ancIndex) {
+                            item.popupMenuData.items = data.item.subMenuItems;
+                            this.refreshDepth();
+                            item.popupMenuData.event.pageX = this.popupMenuBox[data.level].popupMenuData.event.pageX + popupMenu.getBoundingClientRect().width - 2;
+                            item.popupMenuData.event.pageY = this.popupMenuBox[data.level].popupMenuData.event.pageY + data.index * (event.target as HTMLElement).getBoundingClientRect().height + 6;
+                            this.$nextTick(() => {
+                                this.setMenuPosition(event, index);
+                                this.updateScrollbar(index);
+                            });
+                        }
+                    }, JSON.parse(JSON.stringify(data.item)));
+                }
             }
         }
 
         public itemLeave(event: MouseEvent, subIndex: number, subItem: any, level: number): void {
             let dom = event.relatedTarget as any;
-            if (subItem.hasSubMenuItems && (subItem.subMenuItems || subItem.callback) && !!dom && this.matchContextmenu(dom, (this.$refs.contextMenu as any)?.[level])) {
+            if ((subItem.subMenuItems || subItem.callback) && !!dom && this.matchPopupmenu(dom, (this.$refs.popupMenu as any)?.[level])) {
                 let data = { level: level, item: subItem, index: subIndex },
                     index = data.level + 1,
-                    item = this.contextMenuBox[index];
+                    item = this.popupMenuBox[index];
                 data.item.hovered = false;
-                item.showContextMenu = false;
-                this.$set(this.contextMenuBox[data.level].contextMenuData.items, data.index, data.item);
-                this.$set(this.contextMenuBox, index, item);
+                item.showPopupMenu = false;
+                this.$set(this.popupMenuBox[data.level].popupMenuData.items, data.index, data.item);
+                this.$set(this.popupMenuBox, index, item);
             }
         }
 
         public dropLeave(event: MouseEvent, level: number): void {
             let dom = event.relatedTarget as any;
-            if (this.matchContextmenu(dom, (this.$refs.contextMenu as any)?.[level + 1])) {
+            if (this.matchPopupmenu(dom, (this.$refs.popupMenu as any)?.[level + 1])) {
                 return;
-            } else if (this.matchContextmenu(dom, (this.$refs.contextMenu as any)?.[level - 1])) {
+            } else if (this.matchPopupmenu(dom, (this.$refs.popupMenu as any)?.[level - 1])) {
                 let data = { level: level };
                 for (let i = data.level; i < this.depth; i++) {
-                    this.contextMenuBox[i].showContextMenu = false;
-                    this.$set(this.contextMenuBox, i, this.contextMenuBox[i]);
-                    this.contextMenuBox[i-1].contextMenuData.items.forEach((item: any, index: number) => {
+                    this.popupMenuBox[i].showPopupMenu = false;
+                    this.$set(this.popupMenuBox, i, this.popupMenuBox[i]);
+                    this.popupMenuBox[i-1].popupMenuData.items?.forEach((item: any, index: number) => {
                         item.hovered = false;
-                        this.$set(this.contextMenuBox[i-1].contextMenuData.items, index, item);
+                        this.$set(this.popupMenuBox[i-1].popupMenuData.items, index, item);
                     });
                 }
             } else {
                 let data = { level: 1 };
                 for (let i = data.level; i < this.depth; i++) {
-                    this.contextMenuBox[i].showContextMenu = false;
-                    this.$set(this.contextMenuBox, i, this.contextMenuBox[i]);
-                    this.contextMenuBox[i-1].contextMenuData.items.forEach((item: any, index: number) => {
+                    this.popupMenuBox[i].showPopupMenu = false;
+                    this.$set(this.popupMenuBox, i, this.popupMenuBox[i]);
+                    this.popupMenuBox[i-1].popupMenuData.items?.forEach((item: any, index: number) => {
                         item.hovered = false;
-                        this.$set(this.contextMenuBox[i-1].contextMenuData.items, index, item);
+                        this.$set(this.popupMenuBox[i-1].popupMenuData.items, index, item);
                     });
                 }
             }
         }
 
-        public matchContextmenu(curDom: any, relDom: any) {
+        public matchPopupmenu(curDom: any, relDom: any) {
             return relDom && relDom.contains(curDom);
         }
 
-        public updateScrollbar(index: number) {
+        public updateScrollbar(index: number, scrollToTop?: boolean) {
             let scrollbar = (this.$refs.scrollbar as any)?.[index];
-            if (scrollbar) scrollbar.update();
+            if (scrollbar) {
+                scrollbar.update();
+                if(scrollToTop) scrollbar.$el.scrollTop = 0;
+            }
         }
 
-        public getDepth(contextMenuData: any) {
+        public listenContentResize(index: number) {
+            let contentWatcher = (this.$refs.contentWatcher as any)?.[index];
+            if (contentWatcher && contentWatcher.contentWindow)
+                contentWatcher.contentWindow.addEventListener('resize', () => {this.updateScrollbar(index);});
+        }
+
+        public refreshDepth() {
+            let depth = this.getDepth(this.popupMenuBox[0].popupMenuData);
+            if (depth > this.depth) {
+                for (var i = this.depth; i < depth; i++) {
+                    this.popupMenuBox.push({ popupMenuData: { event: { pageX: this.popupMenuBox[0].pageX, pageY: this.popupMenuBox[0].pageX + i * 180 }, items: [] }, showPopupMenu: false });
+                }
+                this.depth = depth;
+            }
+        }
+
+        public getDepth(popupMenuData: any) {
             let depthArr: number[] = [],
                 num = 0;
-            this.ergodic(contextMenuData.items, depthArr, num);
+            this.ergodic(popupMenuData.items, depthArr, num);
             return Math.max.apply(null, depthArr);
         }
 
-        public ergodic(contextMenuItems: any[], depthArr: number[], num: number) {
-            contextMenuItems.forEach((item: any) => {
-                if (!item.subMenuItems) {
+        public ergodic(popupMenuItems: any[], depthArr: number[], num: number) {
+            popupMenuItems.forEach((item: any) => {
+                if (!item.subMenuItems && !item.callback) {
                     depthArr.push(num + 1);
-                } else if (!item.subMenuItems.length) {
+                } else if ((item.subMenuItems && !item.subMenuItems.length) || (!(item.subMenuItems && item.subMenuItems.length) && item.callback)) {
                     depthArr.push(num + 2);
                 } else {
-                    this.ergodic(item.subMenuItems, depthArr, num + 1);
+                    this.ergodic(item.subMenuItems as any[], depthArr, num + 1);
                 }
             });
         }
 
         public setMenuPosition(event: MouseEvent, level: number) {
-            let contextMenu = (this.$refs['contextMenu'] as any)[level] as HTMLElement;
+            let popupMenu = (this.$refs['popupMenu'] as any)[level] as HTMLElement;
 
-            if (contextMenu) {
+            if (popupMenu) {
                 let bodyRect = document.body.getBoundingClientRect(),
-                    lastContextMenu = (this.$refs['contextMenu'] as any)[level - 1] as HTMLElement,
-                    ptyh = lastContextMenu.getElementsByClassName('ps__thumb-y')[0].getBoundingClientRect().width;
+                    lastPopupMenu = (this.$refs['popupMenu'] as any)[level - 1] as HTMLElement,
+                    ptyh = lastPopupMenu.getElementsByClassName('ps__thumb-y')[0].getBoundingClientRect().width;
 
-                let xpos = this.getMouseX(this.contextMenuBox[level].contextMenuData.event),
-                    ypos = this.getMouseY(this.contextMenuBox[level].contextMenuData.event),
-                    xpagePos = contextMenu.getBoundingClientRect().left,
-                    ypagePos = contextMenu.getBoundingClientRect().top;
+                let xpos = this.getMouseX(this.popupMenuBox[level].popupMenuData.event),
+                    ypos = this.getMouseY(this.popupMenuBox[level].popupMenuData.event),
+                    xpagePos = popupMenu.getBoundingClientRect().left,
+                    ypagePos = popupMenu.getBoundingClientRect().top;
 
                 let ww = bodyRect.width + (window.pageXOffset || (document.documentElement as HTMLElement).scrollLeft || document.body.scrollLeft),
-                    mw = contextMenu.getBoundingClientRect().width,
-                    lmw = lastContextMenu.getBoundingClientRect().width;
-                let x = xpagePos + mw > ww ? xpos - mw - lmw + 6 : xpos + 2 - ptyh;
+                    mw = popupMenu.getBoundingClientRect().width,
+                    lmw = lastPopupMenu.getBoundingClientRect().width;
+                let x = xpagePos + mw > ww ? xpos - mw - lmw + 4 : xpos - ptyh;
 
                 let wh = bodyRect.height + (window.pageYOffset || (document.documentElement as HTMLElement).scrollTop || document.body.scrollTop),
-                    mh = contextMenu.getBoundingClientRect().height,
-                    eh = (event.currentTarget as HTMLElement).getBoundingClientRect().height;
-                let y = ypagePos + mh > wh ? ypos - mh + eh : ypos;
+                    mh = popupMenu.getBoundingClientRect().height,
+                    st = (this.$refs['scrollbar'] as any)[level - 1].$el.scrollTop,
+                    eh = (event.target as HTMLElement).getBoundingClientRect().height;
+                let y = ypagePos - st + mh > wh ? ypos - mh - st + eh : ypos - st;
 
-                this.contextMenuBox[level].contextMenuData.event.pageX = x;
-                this.contextMenuBox[level].contextMenuData.event.pageY = y;
-
-                contextMenu.style.left = x + 'px';
-                contextMenu.style.top = y + 'px';
+                this.popupMenuBox[level].popupMenuData.event.pageX = x;
+                this.popupMenuBox[level].popupMenuData.event.pageY = y;
             }
         }
 
@@ -217,32 +249,67 @@
         }
 
         public getMouseY(e: MouseEvent): number {
-            if (e.pageY) {
+            if (e.pageY != undefined && e.pageY != null) {
                 return e.pageY;
-            } else if (e.clientY) {
+            } else if (e.clientY != undefined && e.clientY != null) {
                 let scrollTop = document.documentElement ? document.documentElement.scrollTop : document.body.scrollTop;
-                return e.clientX + scrollTop;
+                return e.clientY + scrollTop;
             }
             return 0;
         }
 
-        public showPopupMenu(contextMenuData: any) {
-            (contextMenuData as any).event = { pageX: 0, pageY: 1 } as MouseEvent;
-            this.depth = this.getDepth(contextMenuData);
-            this.contextMenuBox = [];
-            this.contextMenuBox[0] = { contextMenuData: contextMenuData, showContextMenu: true };
+        public showPopupMenu(event: MouseEvent, popupMenuData: any) {
+            (popupMenuData as any).event = { pageX: 0, pageY: 1 } as MouseEvent;
+            this.depth = this.getDepth(popupMenuData);
+            this.popupMenuBox = [];
+            this.popupMenuBox[0] = { popupMenuData: popupMenuData, showPopupMenu: true };
             for (var i = 1; i < this.depth; i++) {
-                this.contextMenuBox.push({ contextMenuData: { event: { pageX: 0, pageY: 0 }, items: []}, showContextMenu: false });
+                this.popupMenuBox.push({ popupMenuData: { event: { pageX: 0, pageY: 0 }, items: []}, showPopupMenu: false });
+            }
+            if(this.useMode == 'pinned'){
+                this.setPinnedPopupMenuPos(event);
+            }else this.setFreePopupMenuPos(event);
+        }
+
+        public setPinnedPopupMenuPos(event: MouseEvent) {
+            this.$nextTick(() => {
+                if ((this.$refs['popupMenu'] as any).length) {
+                    let popupMenu = (this.$refs['popupMenu'] as any)[0] as HTMLElement,
+                        bodyRect = document.body.getBoundingClientRect(),
+                        xpagePos = (popupMenu.parentNode as any).getBoundingClientRect().left,
+                        lmw = (popupMenu.parentNode as any).getBoundingClientRect().width,
+                        ww = bodyRect.width + (window.pageXOffset || (document.documentElement as HTMLElement).scrollLeft || document.body.scrollLeft),
+                        mw = popupMenu.getBoundingClientRect().width,
+                        ypagePos = (popupMenu.parentNode as any).getBoundingClientRect().top,
+                        emh = (event.currentTarget ? event.currentTarget as any : event.target as any).getBoundingClientRect().height,
+                        wh = bodyRect.height + (window.pageYOffset || (document.documentElement as HTMLElement).scrollTop || document.body.scrollTop),
+                        mh = popupMenu.getBoundingClientRect().height;
+                    if (xpagePos + mw > ww) this.popupMenuBox[0].popupMenuData.event.pageX = lmw - mw;
+                    if (ypagePos + mh > wh) this.popupMenuBox[0].popupMenuData.event.pageY = 0 - emh - mh;
+                    this.$set(this.popupMenuBox, 0 , this.popupMenuBox[0]);
+                }
+            });
+        }
+
+        public setFreePopupMenuPos(event: MouseEvent) {
+            let popupMenuBox = this.$refs.popupMenuBox as any;
+            if(popupMenuBox) {
+                popupMenuBox.style.left = this.getMouseX(event) + 'px';
+                popupMenuBox.style.top = this.getMouseY(event) + 'px';
             }
             this.$nextTick(() => {
-                if ((this.$refs['contextMenu'] as any).length) {
-                    let contextMenu = (this.$refs['contextMenu'] as any)[0] as HTMLElement,
+                if ((this.$refs['popupMenu'] as any).length) {
+                    let popupMenu = (this.$refs['popupMenu'] as any)[0] as HTMLElement,
                         bodyRect = document.body.getBoundingClientRect(),
-                        xpagePos = (contextMenu.parentNode as any).getBoundingClientRect().left,
-                        lmw = (contextMenu.parentNode as any).getBoundingClientRect().width,
+                        xpagePos = (popupMenu.parentNode as any).getBoundingClientRect().left,
                         ww = bodyRect.width + (window.pageXOffset || (document.documentElement as HTMLElement).scrollLeft || document.body.scrollLeft),
-                        mw = contextMenu.getBoundingClientRect().width;
-                    if (xpagePos + mw > ww) this.contextMenuBox[0].contextMenuData.event.pageX = lmw - mw;
+                        mw = popupMenu.getBoundingClientRect().width,
+                        ypagePos = (popupMenu.parentNode as any).getBoundingClientRect().top,
+                        wh = bodyRect.height + (window.pageYOffset || (document.documentElement as HTMLElement).scrollTop || document.body.scrollTop),
+                        mh = popupMenu.getBoundingClientRect().height;
+                    if (xpagePos + mw > ww) this.popupMenuBox[0].popupMenuData.event.pageX = 0 - mw;
+                    if (ypagePos + mh > wh) this.popupMenuBox[0].popupMenuData.event.pageY = 0 - mh;
+                    this.$set(this.popupMenuBox, 0 , this.popupMenuBox[0]);
                 }
             });
         }
@@ -250,12 +317,17 @@
 </script>
 
 <style scoped>
+    .popupMenuBox.free{
+        position: fixed;
+    }
+
     .popupMenuBox{
         user-select: none;
         -moz-user-select: none;
         -webkit-user-select: none;
         font-family: Helvetica Neue, helvetica, tahoma, arial, sans-serif;
         font-size: 14px;
+        position: relative;
     }
 
     .popup-menu {
@@ -266,7 +338,8 @@
         box-shadow: 0 2px 10px 0 rgb(0 0 0 / 20%);
         border: 1px solid rgba(0, 0, 0, 0.2);
         background: #fff;
-        min-width: 200px;
+        min-width: 180px;
+        position: absolute;
     }
 
     .ps {
@@ -308,6 +381,17 @@
 
     .popup-menu ul{
         padding: 0;
+        width: auto;
+        position: relative;
+    }
+
+    .pm-object{
+        position: absolute;
+        height: 100%;
+        width: 100%;
+        pointer-events: none;
+        top: 0;
+        left: 0;
     }
 
     .popup-menu ul li{
@@ -332,16 +416,31 @@
         flex: 1;
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .nodata {
+        max-height: 55vh;
+        height: 42px;
+        display: flex;
+        align-items: center;
         font-style: italic;
         text-align: center;
+        color: rgba(0, 0, 0, 0.3);
+        box-sizing: border-box;
+    }
+
+    .nodata > span {
+        width: 0;
+        min-width: 0;
+        flex: 1;
     }
 
     .loading {
+        max-height: 55vh;
         height: 100px;
         position: relative;
+        box-sizing: border-box;
     }
 
     .loading-circle {
@@ -438,25 +537,19 @@
         border-top-color: #fff;
     }
 
-    /* 整体 */
-    .popupMenuBox{
-        position: relative;
+    .icon{
+        padding-right: 10px;
     }
-    .popup-menu{
-        position: absolute;
-    }
-    .popup-menu ul {
-        width: auto;
-    }
-    /deep/ .ps__rail-y {
+
+    .ps /deep/ .ps__rail-y {
         width: 6px;
     }
-    /deep/ .ps__thumb-y{
+    .ps /deep/ .ps__thumb-y{
         right: 0;
     }
-    /deep/ .ps__rail-y:hover > .ps__thumb-y,
-    /deep/ .ps__rail-y:focus > .ps__thumb-y,
-    /deep/ .ps__rail-y.ps--clicking .ps__thumb-y {
+    .ps /deep/ .ps__rail-y:hover > .ps__thumb-y,
+    .ps /deep/ .ps__rail-y:focus > .ps__thumb-y,
+    .ps /deep/ .ps__rail-y.ps--clicking .ps__thumb-y {
         background-color: #aaa;
         width: 6px;
     }
