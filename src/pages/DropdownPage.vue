@@ -12,7 +12,7 @@
               <dt>控件模式</dt>
               <dd><input id="selectMode" type="radio" value="false" v-model="filterModeSwitch" /><label for="selectMode">选择框</label></dd>
               <dd><input id="filterMode" type="radio" value="true" v-model="filterModeSwitch" />
-                <span :class="['childCon', {show: filterMode}]"><label for="filterMode">输入框</label>
+                <span :class="['childCon', {showCon: filterMode}]"><label for="filterMode">输入框</label>
                   <span v-if="filterMode">
                     <span class="nameModeText"> （ 无匹配项</span>
                     <span><input id="filterItem" type="radio" value="false" v-model="flexibleSwitch" /><label for="filterItem">过滤</label></span>
@@ -30,7 +30,7 @@
               <dt>选值模式</dt>
               <dd><input id="single" type="radio" value="false" v-model="patternSwitch" /><label for="single">单选</label></dd>
               <dd><input id="multi" type="radio" value="true" v-model="patternSwitch" />
-                <span :class="['childCon', {show: multiMode}]"><label for="multi">多选</label>
+                <span :class="['childCon', {showCon: multiMode}]"><label for="multi">多选</label>
                   <span v-if="multiMode">
                     <span class="nameModeText"> （ 显示方式</span>
                     <span><input id="count" type="radio" value="count" v-model="nameModeSwitch" /><label for="count">计数</label></span>
@@ -49,7 +49,7 @@
               <dd><input id="synchronous" type="radio" value="false" v-model="loadSwitch" /><label for="synchronous">同步</label></dd>
               <dd><input id="asynchronous" type="radio" value="true" v-model="loadSwitch" /><label for="asynchronous">异步</label></dd>
             </div>
-            <div :class="['testCon', {show: testValType}]">
+            <div :class="['testCon', {showCon: testValType}]">
               <dt>返回值类型 <button @click="testSwitch">{{testValType ? '关闭测试' : '开始测试' }}</button></dt>
               <div v-if="testValType" class="testWrap">
                 <div class="dropdownGroup">
@@ -332,13 +332,13 @@ export default class DropdownPage extends Vue {
     padding: 2px 0;
     border-radius: 2px;
   }
-  .childCon.show,
-  .testCon.show{
+  .childCon.showCon,
+  .testCon.showCon{
     background: rgba(248, 255, 137, .4);
     border: 1px solid rgba(0, 128, 0, .35);
     padding: 2px 6px;
   }
-  .testCon.show{
+  .testCon.showCon{
     padding: 10px 16px;
   }
   .nameModeText{

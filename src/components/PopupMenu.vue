@@ -3,7 +3,7 @@
         <div v-for="(item, index) in popupMenuBox" :key="'pm_'+index" v-show="item.showPopupMenu" ref="popupMenu" class="popup-menu hide" :level="index" :style="computedStyle(item.popupMenuData.event)" @mouseleave="dropLeave($event, index)" @click.stop.prevent="" @contextmenu.stop.prevent="">
             <ul>
                 <perfect-scrollbar ref="scrollbar">
-                    <object type="text/html" class="pm-object" ref="contentWatcher" @load="listenContentResize(index)"></object>
+                    <object type="text/html" class="pm-object" ref="contentWatcher" data="about:blank" @load="listenContentResize(index)"></object>
                     <div v-if="item.popupMenuData && item.popupMenuData.items && item.popupMenuData.items.length">
                         <li v-for="(subItem, subIndex) in item.popupMenuData.items" :key="'li_'+subIndex"
                             :class="{ seperator: subItem.isSeperator, disabled: subItem.disabled, hovered: subItem.hovered }"

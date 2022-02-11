@@ -16,10 +16,10 @@
                     </div>
                 </div>
                 <div v-else-if="shownListHasItem" class="dropdown-content-wrap">
-                    <object type="text/html" class="dropdown-object" ref="contentWatcher" @load="listenContentResize"></object>
+                    <object type="text/html" class="dropdown-object" ref="contentWatcher" data="about:blank" @load="listenContentResize"></object>
                     <div class="dropdown-scrollbody-wrap" ref="dropdown-scrollbody-wrap" @wheel.stop.prevent="wheelSBW" @touchstart.stop="startMoveSBW" @scroll="updateSBPos">                        
                         <div class="dropdown-ul-wrap">
-                            <object type="text/html" class="dropdown-object" ref="ulWatcher" @load="listenUlResize"></object>
+                            <object type="text/html" class="dropdown-object" ref="ulWatcher" data="about:blank" @load="listenUlResize"></object>
                             <ul class="dropdown-ul-root" ref="dropdown-ul-root">
                                 <li v-for="(gsl, gslIndex) in groupShownList" :key="'gsl_'+gsl.guid">
                                     <div v-if="typeof groupBy != 'undefined'" class="dropdown-ul-groupTitle" @mousedown="groupToggle"><i></i><span>{{gsl.key}}</span></div>

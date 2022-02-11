@@ -23,7 +23,7 @@
               <dd>
                 <span><input id="default" type="radio" value="false" v-model="toFixedSwitch" /><label for="default">默认</label></span>
                 <span><input id="set" type="radio" value="true" v-model="toFixedSwitch" />
-                  <span :class="['childCon', {show: toFixedMode}]"><label for="set">设置</label>
+                  <span :class="['childCon', {showCon: toFixedMode}]"><label for="set">设置</label>
                     <span v-if="toFixedMode" class="fixSet">
                       <span @click="toFixed-1>=0?toFixed--:toFixed;">-</span><input class="toFixed" v-model="toFixed" type="text" readonly /><span @click="toFixed++;">+</span>
                     </span>
@@ -230,7 +230,7 @@ export default class RangePage extends Vue {
     align-items: center;
     height: 27px;
   }
-  .childCon.show{
+  .childCon.showCon{
     background: rgba(248, 255, 137, .4);
     border: 1px solid rgba(0, 128, 0, .35);
     padding: 2px 6px;
