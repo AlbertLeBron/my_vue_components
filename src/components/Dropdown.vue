@@ -622,7 +622,6 @@
             //triggered once the document ends to be touched.
             function endMoveSBW(e: TouchEvent) {
                 e.stopPropagation();
-                e.preventDefault();
                 document.removeEventListener('touchmove', moveSBW, options);
                 document.removeEventListener('touchend', endMoveSBW, options);
             }
