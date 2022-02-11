@@ -9,7 +9,7 @@
                 <button @click="$refs.popupmenu_left.showPopupMenu($event, datasCopy_left);" @contextmenu.stop.prevent="$refs.popupmenu_left.showPopupMenu($event, datasCopy_left);">单击/右击显示菜单</button>
                 <popup-menu ref="popupmenu_left" :useMode="'pinned'"></popup-menu>
             </span>
-            <span class="f_r p_b_1" @mouseenter="$refs.popupmenu_right.showPopupMenu($event, deepCopy(datasCopy_right));" @mouseleave="leaveHidePopupMenu" @contextmenu.stop.prevent="">
+            <span class="f_r p_b_1" @click="$refs.popupmenu_right.showPopupMenu($event, deepCopy(datasCopy_right));" @mouseenter="$refs.popupmenu_right.showPopupMenu($event, deepCopy(datasCopy_right));" @mouseleave="leaveHidePopupMenu" @contextmenu.stop.prevent="">
                 <button>移入显示菜单</button>
                 <popup-menu ref="popupmenu_right" :useMode="'pinned'"></popup-menu>
             </span>
