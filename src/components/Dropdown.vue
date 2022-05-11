@@ -213,16 +213,16 @@
                         let checkedItems!: any[] | undefined;
                         if (typeof this.valKey != 'undefined') {
                             this.groupShownList?.forEach((item: any) => {
-                                let list = item.list.filter((p: any) => this.value.indexOf(p[this.valKey]) > -1);
-                                if (list.length > 0) {
+                                let list = item.list?.filter((p: any) => this.value.indexOf(p[this.valKey]) > -1);
+                                if (Array.isArray(list) && list.length > 0) {
                                     if (typeof checkedItems == 'undefined') checkedItems = [];
                                     checkedItems = checkedItems.concat(list);
                                 }
                             });
                         } else {
                             this.groupShownList?.forEach((item: any) => {
-                                let list = item.list.filter((p: any) => this.value.indexOf(p) > -1);
-                                if (list.length > 0) {
+                                let list = item.list?.filter((p: any) => this.value.indexOf(p) > -1);
+                                if (Array.isArray(list) && list.length > 0) {
                                     if (typeof checkedItems == 'undefined') checkedItems = [];
                                     checkedItems = checkedItems.concat(list);
                                 }
