@@ -463,9 +463,9 @@
 
         //get the xAxis position of mouse.
         public getMouseX(e: MouseEvent): number {
-            if (e.pageX != undefined && e.pageX != null) {
+            if (e.pageX != undefined) {
                 return e.pageX;
-            } else if (e.clientX != undefined && e.clientX != null) {
+            } else if (e.clientX != undefined) {
                 let scrollLeft = document.documentElement ? document.documentElement.scrollLeft : document.body.scrollLeft;
                 return e.clientX + scrollLeft;
             }
@@ -474,11 +474,11 @@
 
         //get the yAxis position of mouse.
         public getMouseY(e: MouseEvent): number {
-            if (e.pageY) {
+            if (e.pageY != undefined) {
                 return e.pageY;
-            } else if (e.clientY) {
+            } else if (e.clientY != undefined) {
                 let scrollTop = document.documentElement ? document.documentElement.scrollTop : document.body.scrollTop;
-                return e.clientX + scrollTop;
+                return e.clientY + scrollTop;
             }
             return 0;
         }
