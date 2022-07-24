@@ -11,7 +11,6 @@
                             @mouseenter="itemEnter($event,subIndex,subItem,index)"
                             @mouseleave="itemLeave($event,subIndex,subItem,index)">
                             <span v-if="!subItem.isSeperator && subItem.icon" :class="['icon', subItem.icon]"></span>
-                            <span v-if="!subItem.isSeperator && subItem.color" class="head-color" :style="{backgroundColor: subItem.color}"></span>
                             <span :class="[!subItem.disabled && subItem.red? 'error': '', 'text']">{{subItem.title}}</span>
                             <i v-if="subItem.subMenuItems || subItem.callback" class="icon-Chevron_r"></i>
                         </li>
