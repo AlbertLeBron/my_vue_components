@@ -20,7 +20,7 @@
                             <div v-for="(item, index) in Array(9).fill(0)" :key="'sp_'+(item+index)"></div>
                         </div>
                     </div>
-                    <div v-else class="nodata"><span>{{$t('Dropdown.noDataTips')}}</span></div>
+                    <div v-else class="nodata"><span>暂无数据</span></div>
                 </perfect-scrollbar>               
             </ul>
         </div>
