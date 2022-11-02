@@ -42,12 +42,12 @@
             }
         }
         mounted() {
-            document.addEventListener('mousedown', this.setMousedownEvent);
-            document.addEventListener('mouseup', this.closeSelect);
+            document.addEventListener('mousedown', this.setMousedownEvent, true);
+            document.addEventListener('mouseup', this.closeSelect, true);
         }
         beforeDestroy() {
-            document.removeEventListener('mousedown', this.setMousedownEvent);
-            document.removeEventListener('mouseup', this.closeSelect);
+            document.removeEventListener('mousedown', this.setMousedownEvent, true);
+            document.removeEventListener('mouseup', this.closeSelect, true);
         }
         public computedStyle(event: any) {
             return {left: this.getMouseX(event) + "px", top: this.getMouseY(event) + "px"};
@@ -62,7 +62,9 @@
             this.mousedownEvent = e;
         }
         public closeSelect(e: MouseEvent) {
-            if (!this.mousedownEvent || (this.$refs.popupMenuBox as any).contains(this.mousedownEvent.target) || (this.$refs.popupMenuBox as any).contains(e.target)) return;
+            let mousedownEvent = this.mousedownEvent;
+            this.mousedownEvent = null as any;
+            if (!mousedownEvent || (this.$refs.popupMenuBox as any).contains(mousedownEvent.target) || (this.$refs.popupMenuBox as any).contains(e.target)) return;
             this.hidePopupMenu();
         }
         public hidePopupMenu() {
@@ -142,7 +144,15 @@
                     });
                 }
             } else {
-                let data = { level: 1 };
+                let psy = (this.mousedownEvent?.target as HTMLElement)?.className === 'ps__thumb-y' ? this.mousedownEvent.target : undefined,
+                    data = { level: 1 };
+                if (psy) 
+                    for (let i = 0; i < this.depth; i++) {
+                        if ((this.$refs.popupMenu as any)?.[i].contains(psy)) {
+                            if (i > 0) data.level = i + 1;
+                            break;
+                        }
+                    }
                 for (let i = data.level; i < this.depth; i++) {
                     this.popupMenuBox[i].showPopupMenu = false;
                     this.$set(this.popupMenuBox, i, this.popupMenuBox[i]);
@@ -195,6 +205,11 @@
             });
         }
         public setMenuPosition(event: MouseEvent, level: number) {
+            if(this.useMode == 'pinned'){
+                this.setPinnedMenuPosition(event, level);
+            }else this.setFreeMenuPosition(event, level);
+        }
+        public setPinnedMenuPosition(event: MouseEvent, level: number) {
             let popupMenu = (this.$refs['popupMenu'] as any)[level] as HTMLElement;
             if (popupMenu) {
                 let bodyRect = document.body.getBoundingClientRect(),
@@ -213,6 +228,31 @@
                     st = (this.$refs['scrollbar'] as any)[level - 1].$el.scrollTop,
                     eh = (event.target as HTMLElement).getBoundingClientRect().height;
                 let y = ypagePos - st + mh > wh ? ypos - mh - st + eh : ypos - st;
+                this.popupMenuBox[level].popupMenuData.event.pageX = x;
+                this.popupMenuBox[level].popupMenuData.event.pageY = y;
+            }
+        }
+        public setFreeMenuPosition(event: MouseEvent, level: number) {
+            let popupMenu = (this.$refs['popupMenu'] as any)[level] as HTMLElement,
+                scrollLeft = window.pageXOffset || (document.documentElement as HTMLElement).scrollLeft || document.body.scrollLeft,
+                scrollTop = window.pageYOffset || (document.documentElement as HTMLElement).scrollTop || document.body.scrollTop;
+            if (popupMenu) {
+                let bodyRect = document.body.getBoundingClientRect(),
+                    lastPopupMenu = (this.$refs['popupMenu'] as any)[level - 1] as HTMLElement,
+                    ptyh = lastPopupMenu.getElementsByClassName('ps__thumb-y')[0].getBoundingClientRect().width;
+                let xpos = this.getMouseX(this.popupMenuBox[level].popupMenuData.event),
+                    ypos = this.getMouseY(this.popupMenuBox[level].popupMenuData.event),
+                    xpagePos = popupMenu.getBoundingClientRect().left,
+                    ypagePos = popupMenu.getBoundingClientRect().top;
+                let ww = bodyRect.width,
+                    mw = popupMenu.getBoundingClientRect().width,
+                    lmw = lastPopupMenu.getBoundingClientRect().width;
+                let x = xpagePos + scrollLeft + mw > ww ? xpos - mw - lmw + 4 : xpos - ptyh;
+                let wh = bodyRect.height,
+                    mh = popupMenu.getBoundingClientRect().height,
+                    st = (this.$refs['scrollbar'] as any)[level - 1].$el.scrollTop,
+                    eh = (event.target as HTMLElement).getBoundingClientRect().height;
+                let y = ypagePos + scrollTop - st + mh > wh ? ypos - mh - st + eh : ypos - st;
                 this.popupMenuBox[level].popupMenuData.event.pageX = x;
                 this.popupMenuBox[level].popupMenuData.event.pageY = y;
             }
@@ -236,7 +276,7 @@
             return 0;
         }
         public showPopupMenu(event: MouseEvent, popupMenuData: any) {
-            (popupMenuData as any).event = { pageX: 0, pageY: 1 } as MouseEvent;
+            (popupMenuData as any).event = { pageX: 0, pageY: 0 } as MouseEvent;
             this.depth = this.getDepth(popupMenuData);
             this.popupMenuBox = [];
             this.popupMenuBox[0] = { popupMenuData: popupMenuData, showPopupMenu: true };
@@ -267,23 +307,25 @@
             });
         }
         public setFreePopupMenuPos(event: MouseEvent) {
-            let popupMenuBox = this.$refs.popupMenuBox as any;
+            let popupMenuBox = this.$refs.popupMenuBox as any,
+                scrollLeft = window.pageXOffset || (document.documentElement as HTMLElement).scrollLeft || document.body.scrollLeft,
+                scrollTop = window.pageYOffset || (document.documentElement as HTMLElement).scrollTop || document.body.scrollTop;
             if(popupMenuBox) {
-                popupMenuBox.style.left = this.getMouseX(event) + 'px';
-                popupMenuBox.style.top = this.getMouseY(event) + 'px';
+                popupMenuBox.style.left = this.getMouseX(event) - scrollLeft + 'px';
+                popupMenuBox.style.top = this.getMouseY(event) - scrollTop + 'px';
             }
             this.$nextTick(() => {
                 if ((this.$refs['popupMenu'] as any).length) {
                     let popupMenu = (this.$refs['popupMenu'] as any)[0] as HTMLElement,
                         bodyRect = document.body.getBoundingClientRect(),
                         xpagePos = (popupMenu.parentNode as any).getBoundingClientRect().left,
-                        ww = bodyRect.width + (window.pageXOffset || (document.documentElement as HTMLElement).scrollLeft || document.body.scrollLeft),
+                        ww = bodyRect.width,
                         mw = popupMenu.getBoundingClientRect().width,
                         ypagePos = (popupMenu.parentNode as any).getBoundingClientRect().top,
-                        wh = bodyRect.height + (window.pageYOffset || (document.documentElement as HTMLElement).scrollTop || document.body.scrollTop),
+                        wh = bodyRect.height,
                         mh = popupMenu.getBoundingClientRect().height;
-                    if (xpagePos + mw > ww) this.popupMenuBox[0].popupMenuData.event.pageX = 0 - mw;
-                    if (ypagePos + mh > wh) this.popupMenuBox[0].popupMenuData.event.pageY = 0 - mh;
+                    if (xpagePos + scrollLeft + mw > ww) this.popupMenuBox[0].popupMenuData.event.pageX = 0 - mw;
+                    if (ypagePos + scrollTop + mh > wh) this.popupMenuBox[0].popupMenuData.event.pageY = 0 - mh;
                     this.$set(this.popupMenuBox, 0 , this.popupMenuBox[0]);
                 }
             });
@@ -461,6 +503,14 @@
                 transform: rotate(320deg);
                 animation-delay: 0s;
             }
+    @keyframes loading {
+        0% {
+            opacity: 1;
+        }
+        100% {
+            opacity: 0;
+        }
+    }
     .icon-Chevron_r {
         position: relative;
         pointer-events: none;
